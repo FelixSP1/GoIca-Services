@@ -7,7 +7,7 @@ import apiRoutes from './routes/lugares.routes.js';
 import { checkDbConnection } from './config/db.js';
 
 const app = express();
-const PORT = process.env.PORT || 8087;
+const PORT = process.env.PORT || 8081;
 
 const startServer = async () => {
   await checkDbConnection();
@@ -17,7 +17,7 @@ const startServer = async () => {
   app.use(cors());
 
   //Rutas
-  app.use('/api', apiRoutes);
+  app.use('/', apiRoutes);
 
   //Middleware
   app.use((req, res, next) => {

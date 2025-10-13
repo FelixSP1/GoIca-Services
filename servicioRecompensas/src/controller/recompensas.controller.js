@@ -77,3 +77,55 @@ export const canjearRecompensa = async (req,res) => {
         if (connection) connection.release()
     }
 }
+
+//Registro de Recompensas
+export const checkIn = async (req, res) => {
+  const { codigoUnico } = req.body;
+  const idUsuario = req.user.id;
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // 1. Validar que el checkpoint existe
+    const [checkpoints] = await connection.query('SELECT * FROM checkpoints WHERE codigoUnico = ?', [codigoUnico]);
+    if (checkpoints.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Punto de control no válido." });
+    }
+    const checkpoint = checkpoints[0];
+
+    // 2. 🛡️ SEGURIDAD: Verificar que el usuario no haya hecho check-in aquí recientemente (ej: en las últimas 24 horas)
+    const [historial] = await connection.query(
+      'SELECT * FROM historial_checkins WHERE idUsuario = ? AND idCheckpoint = ? AND fechaCheckin > NOW() - INTERVAL 24 HOUR',
+      [idUsuario, checkpoint.idCheckpoint]
+    );
+    if (historial.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({ message: "Ya has obtenido puntos en este lugar recientemente." });
+    }
+
+    // 3. Otorgar los puntos
+    const puntosAGanar = checkpoint.puntos;
+    await connection.query('UPDATE puntajes SET puntajeTotal = puntajeTotal + ? WHERE idUsuario = ?', [puntosAGanar, idUsuario]);
+    
+    // 4. Registrar en el historial de puntos
+    await connection.query(
+      'INSERT INTO historial_puntos (idUsuario, puntos, tipoMovimiento) VALUES (?, ?, ?)',
+      [idUsuario, puntosAGanar, `Check-in en checkpoint #${checkpoint.idCheckpoint}`]
+    );
+    
+    // 5. Registrar en el historial de check-ins para evitar abusos
+    await connection.query('INSERT INTO historial_checkins (idUsuario, idCheckpoint) VALUES (?, ?)', [idUsuario, checkpoint.idCheckpoint]);
+
+    await connection.commit();
+    res.json({ success: true, message: `¡Has ganado ${puntosAGanar} puntos!` });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    res.status(500).json({ message: "Error en el servidor.", error: error.message });
+  } finally {
+    if (connection) connection.release();
+  }
+};

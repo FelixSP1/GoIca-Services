@@ -1,14 +1,14 @@
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
-import resenasRoutes from './routes/resena.route.js';
+import resenasRoutes from './routes/resenas.routes.js';
 
 const app = express();
-const PORT = process.env.PORT || 8088;
+const PORT = process.env.PORT || 8083;
 
 app.use(express.json());
 app.use(cors());
-app. use('/api', resenasRoutes);
+app. use('/', resenasRoutes);
 
 app.listen(PORT, () =>{
     console.log(`Servicio de Interacción ejecutandose en el puerto: ${PORT}`);
