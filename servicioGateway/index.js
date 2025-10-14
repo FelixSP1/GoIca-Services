@@ -10,17 +10,20 @@ app.use(cors());
 app.use(express.json())
 
 //Peticiones
-//Direccion servicioCuentas
+//direccion servicioCuentas
 app.use('/api/auth',  proxy('http://localhost:8082'));
 
-//Direccion servicioContenido(Lugares)
+//direccion servicioContenido(Lugares)
 app.use('/api/contenido',  proxy('http://localhost:8081'));
 
-//Direccion servicioInteraccion(Reseñas)
+//direccion servicioInteraccion(Reseñas)
 app.use('/api/interaccion',  proxy('http://localhost:8083'));
 
-//Direccion servicioRecompensas(recompensas :v)
+//direccion servicioRecompensas(recompensas)
 app.use('/api/gamificacion', proxy('http://localhost:8084'));
+
+//direccion servicioTraduccion (traducciones)
+app.use('/api/traduccion', proxy('http://localhost:8085'));
 
 app.listen(PORT, ()=>{
     console.log(`API Gateway ejecutandose en el puerto: ${PORT}`);
