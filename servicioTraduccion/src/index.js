@@ -17,7 +17,7 @@ setInterval(() => {
 }, 60000);
 
 const app = express();
-const PORT = process.env.PORT || 8085;
+const PORT = process.env.PORT || 8086;
 const BASE_URL = process.env.TRANSLATE_BASE_URL || 'http://localhost:5000';
 const API_KEY = process.env.TRANSLATE_API_KEY || '';
 

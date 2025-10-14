@@ -13,6 +13,8 @@ start "Servicio Interacción" cmd /k "cd servicioInteraccion && npm run dev"
 timeout /t 2
 start "Servicio Recompensas" cmd /k "cd servicioRecompensas && npm run dev"
 timeout /t 2
+start "Servicio Administracion" cmd /k "cd servicioAdministracion && npm run dev"
+timeout /t 2
 start "Servicio Traducción" cmd /k "cd servicioTraduccion && npm run dev"
 timeout /t 2
 start "Servicio Gateway" cmd /k "cd servicioGateway && npm run dev"

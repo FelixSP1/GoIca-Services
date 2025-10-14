@@ -22,8 +22,11 @@ app.use('/api/interaccion',  proxy('http://localhost:8083'));
 //direccion servicioRecompensas(recompensas)
 app.use('/api/gamificacion', proxy('http://localhost:8084'));
 
+//Direccion servicioRecompensas(recompensas :v)
+app.use('/api/admin', proxy('http://localhost:8085'));
+
 //direccion servicioTraduccion (traducciones)
-app.use('/api/traduccion', proxy('http://localhost:8085'));
+app.use('/api/traduccion', proxy('http://localhost:8086'));
 
 app.listen(PORT, ()=>{
     console.log(`API Gateway ejecutandose en el puerto: ${PORT}`);
