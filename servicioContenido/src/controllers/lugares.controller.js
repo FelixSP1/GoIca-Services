@@ -8,7 +8,7 @@ export const getLugares = async (req, res) => {
 
   try {
     // 1. Empezamos con una consulta base que siempre es verdadera
-    let sql = 'SELECT * FROM lugares WHERE 1=1';
+    let sql = 'SELECT * FROM lugares WHERE estado=1';
     
     // 2. Creamos un array para guardar los parámetros de forma segura (previene inyección SQL)
     const params = [];
@@ -40,7 +40,7 @@ export const getLugares = async (req, res) => {
 export const getLugarById = async (req, res) => {
     try {
         const { id } = req.params;
-        const [rows] = await pool.query('SELECT * FROM Lugares WHERE idLugar = ?', [id]);
+        const [rows] = await pool.query('SELECT * FROM Lugares WHERE idLugar = ? and estado = 1', [id]);
 
         if (rows.length <= 0) {
             return res.status(404).json({ message: 'Lugar no encontrado' });
