@@ -1,0 +1,20 @@
+# Archivos de Dependencias
+# Ignora la carpeta que contiene miles de archivos descargados.
+# ¡Esta es la regla MÁS IMPORTANTE!
+/node_modules
+
+# Archivos de Entorno
+# Ignora los archivos que contienen contraseñas y llaves de API.
+# ¡Esta es la segunda regla MÁS IMPORTANTE!
+.env
+.env.local
+
+# Archivos de Log y Reportes
+# Ignora los registros de errores y reportes.
+npm-debug.log
+yarn-error.log
+
+# Archivos del Sistema Operativo
+# Ignora archivos basura del sistema.
+.DS_Store
+Thumbs.db
