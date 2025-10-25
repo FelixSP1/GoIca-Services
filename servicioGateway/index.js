@@ -1,38 +1,82 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import proxy from 'express-http-proxy';
 
 const app = express();
-const PORT = process.env.PORT || 8090
+const PORT = process.env.PORT || 8080
 
 app.use(cors());
-app.use(express.json())
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-//Peticiones
-//direccion servicioCuentas
-app.use('/api/auth',  proxy('http://localhost:8082'));
-
-//direccion servicioContenido(Lugares)
-app.use('/api/contenido',  proxy('http://localhost:8091'));
-
-//direccion servicioInteraccion(Reseñas)
-app.use('/api/interaccion',  proxy('http://localhost:8083'));
-
-//direccion servicioRecompensas(recompensas)
-app.use('/api/gamificacion', proxy('http://localhost:8084'));
-
-//Direccion servicioRecompensas(recompensas :v)
-app.use('/api/admin', proxy('http://localhost:8085'));
-
-//direccion servicioTraduccion (traducciones)
-app.use('/api/traduccion', proxy('http://localhost:8086'));
-
-// ✅ AÑADE ESTA RUTA DE PRUEBA AQUÍ
-app.get('/api', (req, res) => {
-  res.json({ message: 'API Gateway está activo y funcionando' });
+// Log para depurar
+app.use((req, res, next) => {
+  console.log(`[GATEWAY] ${req.method} ${req.originalUrl}`);
+  next();
 });
 
-app.listen(PORT, ()=>{
-    console.log(`API Gateway ejecutandose en el puerto: ${PORT}`);
-})
+// === Microservicio de Contenido ===
+app.use('/api/contenido', createProxyMiddleware({
+  target: 'http://localhost:8091',
+  changeOrigin: true
+}));
+
+// === Microservicio de Cuentas ===
+app.use('/api/auth', proxy('http://localhost:8082', {
+  proxyReqPathResolver: (req) => {
+    const destino = `/api/auth${req.url}`; // 👈 agrega nuevamente /api/auth
+    console.log(`[Gateway] -> Redirigiendo a: http://localhost:8082${destino}`);
+    return destino;
+  },
+  proxyErrorHandler: (err, res, next) => {
+    console.error('[Gateway Error]', err);
+    res.status(500).json({ error: 'Error comunicando con Servicio Cuentas', detalle: err.message });
+  }
+}));
+
+app.use('/api/socio', proxy('http://localhost:8082', {
+  proxyReqPathResolver: (req) => {
+    const destino = `/api/socio${req.url}`; // 👈 agrega nuevamente /api/auth
+    console.log(`[Gateway] -> Redirigiendo a: http://localhost:8082${destino}`);
+    return destino;
+  },
+  proxyErrorHandler: (err, res, next) => {
+    console.error('[Gateway Error]', err);
+    res.status(500).json({ error: 'Error comunicando con Servicio Cuentas', detalle: err.message });
+  }
+}));
+
+// === Microservicio de Interacción ===
+app.use('/api/interaccion', createProxyMiddleware({
+  target: 'http://localhost:8083',
+  changeOrigin: true
+}));
+
+// === Microservicio de Gamificación ===
+app.use('/api/gamificacion', createProxyMiddleware({
+  target: 'http://localhost:8084',
+  changeOrigin: true
+}));
+
+// === Microservicio de Administración ===
+app.use('/api/admin', createProxyMiddleware({
+  target: 'http://localhost:8085',
+  changeOrigin: true
+}));
+
+// === Microservicio de Traducción ===
+app.use('/api/traduccion', createProxyMiddleware({
+  target: 'http://localhost:8086',
+  changeOrigin: true
+}));
+
+// Ruta de prueba del Gateway
+app.get('/api', (req, res) => {
+  res.json({ message: 'API Gateway activo y funcionando correctamente 🚀' });
+});
+
+app.listen(PORT, () => {
+  console.log(`API Gateway ejecutándose en el puerto ${PORT}`);
+});
