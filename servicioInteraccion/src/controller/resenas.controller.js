@@ -30,3 +30,28 @@ export const getResenasPorLugar = async (req, res) =>{
         res.status(500).json({ message: "Error en el servidor.", error: error.message});
     }
 }
+
+//Todas las reseñas
+export const getAllResenas = async (req, res) => {
+    try {
+        // Hacemos JOIN con usuarios para el nombre de usuario
+        // y con lugares para el nombre del lugar
+        const [rows] = await pool.query(
+            `SELECT
+               r.idReview,
+               r.comentario,
+               r.calificacion,
+               r.fechaCreacion,
+               u.nombreUsuario,
+               l.nombreLugar
+             FROM resenas r
+             JOIN usuarios u ON r.idUsuario = u.idUsuario
+             JOIN lugares l ON r.idLugar = l.idLugar
+             ORDER BY r.fechaCreacion DESC`
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error("Error al obtener todas las reseñas:", error);
+        res.status(500).json({ message: "Error en el servidor al obtener reseñas.", error: error.message });
+    }
+};
