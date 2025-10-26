@@ -61,7 +61,13 @@ export const getResenasPorUsuario = async (req, res) => {
     try {
         const idUsuario = req.user.id; // Get user ID from validated token
         const [rows] = await pool.query(
-            `SELECT r.idReview, r.comentario, r.calificacion, r.fechaCreacion, l.nombreLugar
+            `SELECT
+               r.idReview,
+               r.comentario,
+               r.calificacion,
+               r.fechaCreacion,
+               l.nombreLugar,
+               l.idLugar
              FROM resenas r
              JOIN lugares l ON r.idLugar = l.idLugar
              WHERE r.idUsuario = ?
@@ -70,7 +76,7 @@ export const getResenasPorUsuario = async (req, res) => {
         );
         res.json(rows);
     } catch (error) {
-        console.error("Error fetching user reviews:", error);
-        res.status(500).json({ message: "Error en el servidor.", error: error.message });
+        console.error("Error al obtener reseñas del usuario:", error);
+        res.status(500).json({ message: "Error en el servidor al obtener reseñas del usuario.", error: error.message });
     }
 };
