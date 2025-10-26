@@ -24,29 +24,31 @@ app.use('/api/contenido', createProxyMiddleware({
 }));
 
 // === Microservicio de Cuentas ===
-app.use('/api/auth', proxy('http://localhost:8082', {
+const cuentasProxyOptions = {
   proxyReqPathResolver: (req) => {
-    const destino = `/api/auth${req.url}`; // 👈 agrega nuevamente /api/auth
-    console.log(`[Gateway] -> Redirigiendo a: http://localhost:8082${destino}`);
-    return destino;
+    const parts = req.originalUrl.split('/'); // e.g., ['', 'api', 'admin', 'socios', 'stats']
+    let destinationPath = req.originalUrl; // Default
+    if (parts.length >= 3) {
+      const servicePrefix = parts[2]; // 'auth', 'socio', 'user', or 'admin'
+      if (servicePrefix === 'admin' && parts[3] === 'users') {
+        destinationPath = `/api/admin/users${req.url}`;
+      } else if (servicePrefix === 'admin' && parts[3] === 'socios') { // <-- Handle admin/socios
+        destinationPath = `/api/admin/socios${req.url}`;
+      }
+      else if (['auth', 'socio', 'user'].includes(servicePrefix)) {
+        destinationPath = `/api/${servicePrefix}${req.url}`;
+      }
+    }
+    console.log(`[Gateway] -> Cuentas: http://localhost:8082${destinationPath}`);
+    return destinationPath;
   },
-  proxyErrorHandler: (err, res, next) => {
-    console.error('[Gateway Error]', err);
-    res.status(500).json({ error: 'Error comunicando con Servicio Cuentas', detalle: err.message });
-  }
-}));
-
-app.use('/api/socio', proxy('http://localhost:8082', {
-  proxyReqPathResolver: (req) => {
-    const destino = `/api/socio${req.url}`; // 👈 agrega nuevamente /api/auth
-    console.log(`[Gateway] -> Redirigiendo a: http://localhost:8082${destino}`);
-    return destino;
-  },
-  proxyErrorHandler: (err, res, next) => {
-    console.error('[Gateway Error]', err);
-    res.status(500).json({ error: 'Error comunicando con Servicio Cuentas', detalle: err.message });
-  }
-}));
+  proxyErrorHandler: (err, res, next) => { /* ... error handler ... */ }
+};
+app.use('/api/auth', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/socio', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
 
 // === Microservicio de Interacción ===
 app.use('/api/interaccion', createProxyMiddleware({
@@ -63,7 +65,13 @@ app.use('/api/gamificacion', createProxyMiddleware({
 // === Microservicio de Administración ===
 app.use('/api/admin', createProxyMiddleware({
   target: 'http://localhost:8085',
-  changeOrigin: true
+  changeOrigin: true,
+  // Optional: Add pathRewrite if servicioAdministracion doesn't expect /api/admin prefix
+  // pathRewrite: { '^/api/admin': '' },
+  onError: (err, req, res) => {
+    console.error('[Gateway AdminGeneral Error]', err);
+    res.status(502).json({ error: 'Bad Gateway - Error communicating with Servicio Administracion' });
+  }
 }));
 
 // === Microservicio de Traducción ===

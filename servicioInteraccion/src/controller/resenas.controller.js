@@ -55,3 +55,22 @@ export const getAllResenas = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor al obtener reseñas.", error: error.message });
     }
 };
+
+//Reseña por Usuario
+export const getResenasPorUsuario = async (req, res) => {
+    try {
+        const idUsuario = req.user.id; // Get user ID from validated token
+        const [rows] = await pool.query(
+            `SELECT r.idReview, r.comentario, r.calificacion, r.fechaCreacion, l.nombreLugar
+             FROM resenas r
+             JOIN lugares l ON r.idLugar = l.idLugar
+             WHERE r.idUsuario = ?
+             ORDER BY r.fechaCreacion DESC`,
+            [idUsuario]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error("Error fetching user reviews:", error);
+        res.status(500).json({ message: "Error en el servidor.", error: error.message });
+    }
+};
