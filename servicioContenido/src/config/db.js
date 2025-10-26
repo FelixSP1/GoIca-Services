@@ -7,7 +7,7 @@ const dbConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
-    port: process.env.DB_PORT || 3306,
+    port: process.env.DB_PORT || 3310,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -23,7 +23,7 @@ export const checkDbConnection = async () => {
         console.log('Conexion a la base de datos establecida exitosamente');
         connection.release();
     } catch (error) {
-        console.console.error('No se pudo conectar la base de datos:', error.message);
+        console.error('No se pudo conectar la base de datos:', error.message);
         process.exit(1);
     }
 
