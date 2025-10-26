@@ -55,3 +55,29 @@ export const getAllResenas = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor al obtener reseñas.", error: error.message });
     }
 };
+
+// Obtener reseñas de un usuario específico
+export const getResenasPorUsuario = async (req, res) => {
+    const { idUsuario } = req.params;
+    
+    try {
+        const [rows] = await pool.query(
+            `SELECT
+               r.idReview,
+               r.comentario,
+               r.calificacion,
+               r.fechaCreacion,
+               l.nombreLugar,
+               l.idLugar
+             FROM resenas r
+             JOIN lugares l ON r.idLugar = l.idLugar
+             WHERE r.idUsuario = ?
+             ORDER BY r.fechaCreacion DESC`,
+            [idUsuario]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error("Error al obtener reseñas del usuario:", error);
+        res.status(500).json({ message: "Error en el servidor al obtener reseñas del usuario.", error: error.message });
+    }
+};
