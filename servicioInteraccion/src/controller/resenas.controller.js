@@ -56,11 +56,10 @@ export const getAllResenas = async (req, res) => {
     }
 };
 
-// Obtener reseñas de un usuario específico
+//Reseña por Usuario
 export const getResenasPorUsuario = async (req, res) => {
-    const { idUsuario } = req.params;
-    
     try {
+        const idUsuario = req.user.id; // Get user ID from validated token
         const [rows] = await pool.query(
             `SELECT
                r.idReview,
