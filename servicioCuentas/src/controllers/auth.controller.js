@@ -49,7 +49,7 @@ export const login = async (req, res) => {
 
     // Buscar usuario por email
     const [users] = await pool.query(
-      'SELECT u.*, r.nombreRol FROM Usuarios u JOIN roles r ON u.idRol = r.idRol WHERE u.Email = ?', [Email]);
+      'SELECT u.*, r.nombreRol FROM usuarios u JOIN roles r ON u.idRol = r.idRol WHERE u.Email = ?', [Email]);
 
     if (users.length === 0) {
       return res.status(401).json({ message: "Credenciales inválidas." }); // Usuario no encontrado
