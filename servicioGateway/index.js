@@ -87,6 +87,7 @@ app.use('/api/traduccion', createProxyMiddleware({
   changeOrigin: true
 }));
 
+// === Microservicio de Gráficos ===
 const graficosProxyOptions = {
   proxyReqPathResolver: (req) => {
       const destinationPath = `/api/charts${req.url}`; 
@@ -95,6 +96,17 @@ const graficosProxyOptions = {
   },
 };
 app.use('/api/graficos', proxy('http://localhost:8092', graficosProxyOptions));
+
+// === Microservicio de Noticias ===
+const noticiasProxyOptions = {
+  proxyReqPathResolver: (req) => {
+      const destinationPath = req.originalUrl; 
+      console.log(`[Gateway] -> Noticias: http://localhost:8093${destinationPath}`);
+      return destinationPath;
+  },
+};
+
+app.use('/api/noticias', proxy('http://localhost:8093', noticiasProxyOptions));
 
 // Ruta de prueba del Gateway
 app.get('/api', (req, res) => {

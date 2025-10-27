@@ -19,6 +19,8 @@ start "Servicio Traducción" cmd /k "cd servicioTraduccion && npm run dev"
 timeout /t 2
 start "Servicio Graficos" cmd /k "cd servicioGraficos && npm run dev"
 timeout /t 2
+start "Servicio Noticias" cmd /k "cd servicioNoticias && npm run dev"
+timeout /t 2
 start "Servicio Gateway" cmd /k "cd servicioGateway && npm run dev"
 echo Iniciando servicio de traduccion
 cd /d %~dp0
