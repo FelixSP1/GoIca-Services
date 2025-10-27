@@ -5,11 +5,9 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import proxy from 'express-http-proxy';
 
 const app = express();
-const PORT = process.env.PORT || 8089
+const PORT = process.env.PORT || 8080
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Log para depurar
 app.use((req, res, next) => {
@@ -17,10 +15,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// === Microservicio de Contenido ===
-app.use('/api/contenido', createProxyMiddleware({
-  target: 'http://localhost:8091',
-  changeOrigin: true
+// === Microservicio de Administración ===
+app.use('/api/admin', createProxyMiddleware({
+  target: 'http://localhost:8085',
+  changeOrigin: true,
+  selfHandleResponse: false, // no interceptar respuesta
+  onProxyReq: (proxyReq, req, res) => {
+    // Reenvía el body si fue parseado
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
+  },
+  onError: (err, req, res) => {
+    console.error('[Gateway -> Admin Error]', err.message);
+    res.status(502).json({ error: 'Bad Gateway - Servicio Administración no disponible' });
+  }
 }));
 
 // === Microservicio de Cuentas ===
@@ -50,6 +61,12 @@ app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
 
+// === Microservicio de Contenido ===
+app.use('/api/contenido', createProxyMiddleware({
+  target: 'http://localhost:8091',
+  changeOrigin: true
+}));
+
 // === Microservicio de Interacción ===
 app.use('/api/interaccion', createProxyMiddleware({
   target: 'http://localhost:8083',
@@ -62,23 +79,22 @@ app.use('/api/gamificacion', createProxyMiddleware({
   changeOrigin: true
 }));
 
-// === Microservicio de Administración ===
-app.use('/api/admin', createProxyMiddleware({
-  target: 'http://localhost:8085',
-  changeOrigin: true,
-  // Optional: Add pathRewrite if servicioAdministracion doesn't expect /api/admin prefix
-  // pathRewrite: { '^/api/admin': '' },
-  onError: (err, req, res) => {
-    console.error('[Gateway AdminGeneral Error]', err);
-    res.status(502).json({ error: 'Bad Gateway - Error communicating with Servicio Administracion' });
-  }
-}));
+
 
 // === Microservicio de Traducción ===
 app.use('/api/traduccion', createProxyMiddleware({
   target: 'http://localhost:8086',
   changeOrigin: true
 }));
+
+const graficosProxyOptions = {
+  proxyReqPathResolver: (req) => {
+      const destinationPath = `/api/charts${req.url}`; 
+      console.log(`[Gateway] -> Gráficos: http://localhost:8092${destinationPath}`);
+      return destinationPath;
+  },
+};
+app.use('/api/graficos', proxy('http://localhost:8092', graficosProxyOptions));
 
 // Ruta de prueba del Gateway
 app.get('/api', (req, res) => {
