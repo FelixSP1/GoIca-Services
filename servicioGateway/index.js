@@ -5,7 +5,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import proxy from 'express-http-proxy';
 
 const app = express();
-const PORT = process.env.PORT || 8089
+const PORT = process.env.PORT || 8080
 
 app.use(cors());
 app.use(express.json());

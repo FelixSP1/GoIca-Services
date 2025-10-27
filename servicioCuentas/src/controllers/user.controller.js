@@ -1,6 +1,6 @@
 import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import cloudinary from "../config/cloudinary.js";
 
 
 //Funcion Obtener informacion del User
@@ -8,7 +8,7 @@ export const getUserProfile = async (req, res) => {
   try {
     const idUsuario = req.user.id;
     const [rows] = await pool.query(
-      'SELECT idUsuario, nombreUsuario, ApellidoPa, ApellidoMa, Email, Telefono FROM usuarios WHERE idUsuario = ?',
+      'SELECT idUsuario, nombreUsuario, ApellidoPa, ApellidoMa, Email, telefono, fotoPerfil FROM usuarios WHERE idUsuario = ?',
       [idUsuario]
     );
     if (rows.length === 0) {
@@ -19,8 +19,8 @@ export const getUserProfile = async (req, res) => {
       nombreUsuario: rows[0].nombreUsuario || '',
       ApellidoPa: rows[0].ApellidoPa || '',
       ApellidoMa: rows[0].ApellidoMa || '',
-      Telefono: rows[0].Telefono || '',
-      // fotoPerfil: rows[0].fotoPerfil || '' // Uncomment if you add this column
+      telefono: rows[0].telefono || '',
+      fotoPerfil: rows[0].fotoPerfil || '' // Uncomment if you add this column
     };
     res.json(userData);
   } catch (error) {
@@ -36,7 +36,7 @@ export const updateProfile = async (req, res) => {
   const idUsuario = req.user.id;
 
   // 2. Obtenemos los nuevos datos del cuerpo de la petición.
-  const { nombreUsuario, ApellidoPa, ApellidoMa, telefono, currentPassword, newPassword } = req.body;
+  const { nombreUsuario, ApellidoPa, ApellidoMa, telefono, fotoPerfil, currentPassword, newPassword } = req.body;
 
   // 3. Validación simple
   if (!nombreUsuario) {
@@ -82,8 +82,9 @@ export const updateProfile = async (req, res) => {
                  nombreUsuario = ?, 
                  ApellidoPa = ?, 
                  ApellidoMa = ?, 
-                 telefono = ?`; // Use Telefono if that's the column name
-    let params = [nombreUsuario, ApellidoPa, ApellidoMa, telefono]; // Use 'telefono' variable
+                 telefono = ?,
+                 fotoPerfil = ?`; // Use Telefono if that's the column name
+    let params = [nombreUsuario, ApellidoPa, ApellidoMa, telefono, fotoPerfil];
 
     if (updatePassword) {
       sql += `, Password = ?`;
@@ -96,7 +97,7 @@ export const updateProfile = async (req, res) => {
 
     // Fetch updated data (excluding password) to return
     const [updatedUserRows] = await pool.query(
-      'SELECT idUsuario, nombreUsuario, ApellidoPa, ApellidoMa, Email, telefono FROM usuarios WHERE idUsuario = ?',
+      'SELECT idUsuario, nombreUsuario, ApellidoPa, ApellidoMa, Email, telefono, fotoPerfil FROM usuarios WHERE idUsuario = ?',
       [idUsuario]
     );
 
@@ -112,4 +113,30 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-//Futuras Adiciones par
+export const uploadUserProfileImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "No se ha subido ningún archivo." });
+        }
+
+        // Optional: Get user ID if needed for folder structure, etc.
+        // const idUsuario = req.user.id;
+
+        // Convert buffer to base64 data URL for Cloudinary
+        const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+        // Upload to Cloudinary (adjust folder as needed)
+        const result = await cloudinary.uploader.upload(base64Image, {
+            folder: "goica/profiles" // Specific folder for profile pictures
+            // public_id: `user_${idUsuario}_profile`, // Optional: Custom public ID
+            // overwrite: true // Optional: Replace existing image with same public_id
+        });
+
+        // Return the secure URL provided by Cloudinary
+        res.json({ imageUrl: result.secure_url });
+
+    } catch (error) {
+        console.error("Error al subir imagen de perfil:", error);
+        res.status(500).json({ message: "Error al subir la imagen", error: error.message });
+    }
+};

@@ -1,11 +1,21 @@
 import { Router } from 'express';
-import { getUserProfile, updateProfile } from '../controllers/user.controller.js';
+import multer from 'multer';
+import { getUserProfile, updateProfile, uploadUserProfileImage } from '../controllers/user.controller.js';
 import { authRequired } from '../middleware/validateToken.js';
 
+
 const router = Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit (optional)
+});
 
 // Routes related to the logged-in user's profile
 router.get('/perfil', authRequired, getUserProfile);
 router.put('/perfil', authRequired, updateProfile); // Your existing PUT route
+
+router.post('/upload-image', authRequired, upload.single('imagen'), uploadUserProfileImage);
 
 export default router;
