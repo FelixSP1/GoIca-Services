@@ -5,7 +5,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import proxy from 'express-http-proxy';
 
 const app = express();
-const PORT = process.env.PORT || 8080
+const PORT = process.env.PORT || 8089
 
 app.use(cors());
 
@@ -14,25 +14,6 @@ app.use((req, res, next) => {
   console.log(`[GATEWAY] ${req.method} ${req.originalUrl}`);
   next();
 });
-
-// === Microservicio de Administración ===
-app.use('/api/admin', createProxyMiddleware({
-  target: 'http://localhost:8085',
-  changeOrigin: true,
-  selfHandleResponse: false, // no interceptar respuesta
-  onProxyReq: (proxyReq, req, res) => {
-    // Reenvía el body si fue parseado
-    if (req.body) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
-  },
-  onError: (err, req, res) => {
-    console.error('[Gateway -> Admin Error]', err.message);
-    res.status(502).json({ error: 'Bad Gateway - Servicio Administración no disponible' });
-  }
-}));
 
 // === Microservicio de Cuentas ===
 const cuentasProxyOptions = {
@@ -60,6 +41,25 @@ app.use('/api/socio', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
+
+// === Microservicio de Administración ===
+app.use('/api/admin', createProxyMiddleware({
+  target: 'http://localhost:8085',
+  changeOrigin: true,
+  selfHandleResponse: false, // no interceptar respuesta
+  onProxyReq: (proxyReq, req, res) => {
+    // Reenvía el body si fue parseado
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
+  },
+  onError: (err, req, res) => {
+    console.error('[Gateway -> Admin Error]', err.message);
+    res.status(502).json({ error: 'Bad Gateway - Servicio Administración no disponible' });
+  }
+}));
 
 // === Microservicio de Contenido ===
 app.use('/api/contenido', createProxyMiddleware({

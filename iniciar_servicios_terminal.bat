@@ -36,6 +36,7 @@ wt ^
   ; new-tab --title "Interaccion" cmd /k "cd /d %~dp0\servicioInteraccion && npm run dev" ^
   ; new-tab --title "Recompensas" cmd /k "cd /d %~dp0\servicioRecompensas && npm run dev" ^
   ; new-tab --title "Administracion" cmd /k "cd /d %~dp0\servicioAdministracion && npm run dev" ^
+  ; new-tab --title "Graficos" cmd /k "cd /d %~dp0\servicioGraficos && npm run dev" ^
   ; new-tab --title "Traduccion" cmd /k "cd /d %~dp0\servicioTraduccion && npm run dev" ^
   ; new-tab --title "Gateway" cmd /k "cd /d %~dp0\servicioGateway && npm run dev" ^
   ; new-tab --title "LibreTranslate" cmd /k "cd /d %~dp0\servicioLibreTranslate\LibreTranslate && .\run.bat --load-only es,en,de,fr,pt"
