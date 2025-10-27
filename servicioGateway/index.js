@@ -80,6 +80,15 @@ app.use('/api/traduccion', createProxyMiddleware({
   changeOrigin: true
 }));
 
+const graficosProxyOptions = {
+  proxyReqPathResolver: (req) => {
+      const destinationPath = `/api/charts${req.url}`; 
+      console.log(`[Gateway] -> Gráficos: http://localhost:8092${destinationPath}`);
+      return destinationPath;
+  },
+};
+app.use('/api/graficos', proxy('http://localhost:8092', graficosProxyOptions));
+
 // Ruta de prueba del Gateway
 app.get('/api', (req, res) => {
   res.json({ message: 'API Gateway activo y funcionando correctamente 🚀' });
