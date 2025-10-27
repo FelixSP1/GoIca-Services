@@ -1,4 +1,5 @@
 import { Router } from "express";
+import express from 'express';
 import {
     createLugar,
     deactivateLugarAdmin,
@@ -17,6 +18,11 @@ import {
 import upload from "../config/upload.js";
 import { authRequired } from '../middleware/validatedtoken.js';
 import { authorizeRole } from '../middleware/validateRole.js';
+import multer from "multer";
+
+const storage = multer.memoryStorage();
+
+const jsonParser = express.json();
 
 const router = Router();
 
@@ -25,20 +31,23 @@ router.use(authRequired, authorizeRole('Administrador'));
 
 //GESTION LUGARES
 router.get('/lugares', getAllLugaresAdmin);
-router.post( '/lugares', authRequired, createLugar);
-router.post( '/lugares/:id', authRequired, deactivateLugarAdmin);
+router.post('/lugares', jsonParser, createLugar); // <--- 3. Usa jsonParser
+router.put('/lugares/:id', jsonParser, updateLugarAdmin); // <--- 3. Usa jsonParser
 router.delete('/lugares/:id', deactivateLugarAdmin);
-router.post('/upload/image', authRequired, authorizeRole('Administrador'), upload.single('image'), uploadImage);
+router.get('/lugares/stats', getLugarStatsAdmin);
+
+
+router.post('/upload-image', upload.single('imagen'), uploadImage);
 
 //GESTION RESEÑAS
-router.delete('/reviews/:id', authRequired, authorizeRole('Administrador'), deleteResenaAdmin);
-router.get('/reviews/stats', authRequired, authorizeRole('Administrador'), getResenasStats);
+router.get('/reviews/stats', getResenasStats);
+router.delete('/reviews/:id', deleteResenaAdmin);
 
 //GESTION RECOMPENSAS
-router.get('/rewards', getAllRewardsAdmin);        // GET /api/admin/rewards
-router.get('/rewards/stats', getRewardStatsAdmin); // GET /api/admin/rewards/stats
-router.post('/rewards', createRewardAdmin);       // POST /api/admin/rewards
-router.put('/rewards/:id', updateRewardAdmin);   // PUT /api/admin/rewards/:id
-router.delete('/rewards/:id', deactivateRewardAdmin); // DELETE /api/admin/rewards/:id
+router.get('/rewards', getAllRewardsAdmin);
+router.post('/rewards', jsonParser, createRewardAdmin); // <--- 3. Usa jsonParser
+router.put('/rewards/:id', jsonParser, updateRewardAdmin); // <--- 3. Usa jsonParser
+router.delete('/rewards/:id', deactivateRewardAdmin);
+router.get('/rewards/stats', getRewardStatsAdmin);
 
 export default router;

@@ -47,7 +47,6 @@ export const getLugares = async (req, res) => {
         sql += ' ORDER BY l.nombreLugar';
 
         // --- 5. Execute Query ---
-        console.log("Executing SQL:", pool.format(sql, params)); // Log the final query for debugging
         const [rows] = await pool.query(sql, params);
 
         // --- 6. Process Results (Handle NULL average) ---
