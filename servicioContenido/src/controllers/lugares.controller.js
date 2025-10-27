@@ -3,44 +3,75 @@ import { pool } from '../config/db.js';
 
 //
 export const getLugares = async (req, res) => {
-  // Obtenemos los posibles filtros desde los query params de la URL
-  const { categoria, provincia } = req.query;
+    // Get optional filters from query params
+    const { categoria, provincia } = req.query;
 
-  try {
-    // 1. Empezamos con una consulta base que siempre es verdadera
-    let sql = 'SELECT * FROM lugares WHERE estado=1';
-    
-    // 2. Creamos un array para guardar los parámetros de forma segura (previene inyección SQL)
-    const params = [];
+    try {
+        // --- 1. Base SQL Query with JOIN and Aggregates ---
+        // Select all columns from 'lugares' (aliased as 'l')
+        // Calculate AVG rating and COUNT reviews from 'resenas' (aliased as 'r')
+        let sql = `
+            SELECT
+                l.*,
+                AVG(r.calificacion) AS promedioCalificacion,
+                COUNT(r.idReview) AS cantidadResenas
+            FROM
+                lugares l
+            LEFT JOIN
+                resenas r ON l.idLugar = r.idLugar
+            WHERE l.estado = 1 -- Start with active places
+        `;
 
-    // 3. Si el filtro "categoria" existe, lo añadimos a la consulta y al array de parámetros
-    if (categoria) {
-      sql += ' AND idCategoria = ?';
-      params.push(categoria);
+        const params = [];
+
+        // --- 2. Add Dynamic Filters ---
+        if (categoria) {
+            sql += ' AND l.idCategoria = ?'; // Use alias 'l.'
+            params.push(categoria);
+        }
+        if (provincia) {
+            sql += ' AND l.idProvincia = ?'; // Use alias 'l.'
+            params.push(provincia);
+        }
+
+        // --- 3. Add GROUP BY Clause ---
+        // Group by all selected columns from 'lugares' to make aggregates work correctly
+        sql += `
+            GROUP BY
+                l.idLugar, l.nombreLugar, l.descLugar, l.Direccion, l.imagenLugar,
+                l.estado, l.idCategoria, l.idProvincia, l.fechaCreacion,
+                l.horarioAtencion, l.restriccion
+        `;
+
+        // --- 4. Optional Ordering ---
+        sql += ' ORDER BY l.nombreLugar';
+
+        // --- 5. Execute Query ---
+        console.log("Executing SQL:", pool.format(sql, params)); // Log the final query for debugging
+        const [rows] = await pool.query(sql, params);
+
+        // --- 6. Process Results (Handle NULL average) ---
+        // Convert NULL average (no reviews) to 0 or keep as null based on frontend needs
+        const results = rows.map(row => ({
+            ...row,
+            promedioCalificacion: row.promedioCalificacion === null ? null : parseFloat(row.promedioCalificacion), // Keep null or use 0
+            // cantidadResenas is already correct (0 if no reviews)
+        }));
+
+
+        res.json(results);
+
+    } catch (error) {
+        console.error("Error fetching places with ratings:", error);
+        return res.status(500).json({ message: 'Error en el servidor al obtener lugares.', error: error.message });
     }
-
-    // 4. Hacemos lo mismo para el filtro "provincia" (para el futuro)
-    if (provincia) {
-      sql += ' AND idProvincia = ?';
-      params.push(provincia);
-    }
-
-    // 5. Ejecutamos la consulta SQL construida dinámicamente con sus parámetros
-    const [rows] = await pool.query(sql, params);
-    res.json(rows);
-
-  } catch (error) {
-    // Si hay un error, lo devolvemos para poder depurar
-    console.error("Error en la consulta de lugares:", error); // Añadimos un log en el servidor
-    return res.status(500).json({ message: 'Algo salió mal en el servidor', error: error.message });
-  }
 };
 
 //Obtener ID del lugar
 export const getLugarById = async (req, res) => {
     try {
         const { id } = req.params;
-        const [rows] = await pool.query('SELECT * FROM Lugares WHERE idLugar = ? and estado = 1', [id]);
+        const [rows] = await pool.query('SELECT * FROM lugares WHERE idLugar = ? and estado = 1', [id]);
 
         if (rows.length <= 0) {
             return res.status(404).json({ message: 'Lugar no encontrado' });
