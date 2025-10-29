@@ -14,7 +14,8 @@ const upload = multer({
 
 // Routes related to the logged-in user's profile
 router.get('/perfil', authRequired, getUserProfile);
-router.put('/perfil', authRequired, updateProfile); // Your existing PUT route
+
+router.put('/perfil', authRequired, upload.single('fotoPerfil'), updateProfile); // Your existing PUT route
 
 router.post('/upload-image', authRequired, upload.single('imagen'), uploadUserProfileImage);
 
