@@ -6,12 +6,14 @@ echo ========================================
 echo.
 
 REM Verificar Docker
-tasklist | find /i "Docker Desktop.exe" >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [INFO] Iniciando Docker Desktop...
-    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-    timeout /t 10 /nobreak >nul
-)
+REM Se ha eliminado el inicio automático de Docker Desktop por solicitud del usuario.
+REM Si desea reactivar esta comprobación, descomente las líneas siguientes y ajústelas si es necesario.
+REM tasklist | find /i "Docker Desktop.exe" >nul 2>&1
+REM if %ERRORLEVEL% NEQ 0 (
+REM     echo [INFO] Iniciando Docker Desktop...
+REM     start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+REM     timeout /t 10 /nobreak >nul
+REM )
 
 cd /d "%~dp0"
 

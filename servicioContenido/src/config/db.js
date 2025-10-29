@@ -11,6 +11,12 @@ const dbConfig = {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    // Configuraciones para evitar ECONNRESET con BD en la nube
+    connectTimeout: 60000, // 60 segundos
+    acquireTimeout: 60000, // 60 segundos
+    timeout: 60000, // 60 segundos
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
 };
 
 export const pool = createPool(dbConfig);

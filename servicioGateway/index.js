@@ -27,7 +27,7 @@ const cuentasProxyOptions = {
       } else if (servicePrefix === 'admin' && parts[3] === 'socios') { // <-- Handle admin/socios
         destinationPath = `/api/admin/socios${req.url}`;
       }
-      else if (['auth', 'socio', 'user'].includes(servicePrefix)) {
+      else if (['auth', 'socio', 'user', 'usuarios'].includes(servicePrefix)) {
         destinationPath = `/api/${servicePrefix}${req.url}`;
       }
     }
@@ -39,6 +39,7 @@ const cuentasProxyOptions = {
 app.use('/api/auth', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/socio', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/usuarios', proxy('http://localhost:8082', cuentasProxyOptions)); // ← NUEVO: Para perfil de usuario
 app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
 
