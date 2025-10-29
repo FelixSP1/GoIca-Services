@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import cloudinary from "../config/cloudinary.js";
+import jwt from 'jsonwebtoken';
 
 
 //Funcion Obtener informacion del User
@@ -31,60 +32,56 @@ export const getUserProfile = async (req, res) => {
 
 //Funcion para Actualizar Informacion
 export const updateProfile = async (req, res) => {
-  // 1. Obtenemos el ID del usuario directamente del token.
-  // Esto es seguro porque el middleware 'authRequired' ya lo validó.
   const idUsuario = req.user.id;
 
-  // 2. Obtenemos los nuevos datos del cuerpo de la petición.
-  const { nombreUsuario, ApellidoPa, ApellidoMa, telefono, fotoPerfil, currentPassword, newPassword } = req.body;
+  // 1. Obtener campos de texto de req.body (Multer los parsea)
+  const { nombreUsuario, ApellidoPa, ApellidoMa, telefono, currentPassword, newPassword } = req.body;
+  
+  // 2. Obtener la URL de la foto existente (si el usuario no sube una nueva)
+  // El frontend debe enviar la URL_actual si no se sube un archivo nuevo.
+  let fotoPerfilUrl = req.body.fotoPerfil_url || null;
 
-  // 3. Validación simple
   if (!nombreUsuario) {
     return res.status(400).json({ message: "El nombre es obligatorio." });
   }
 
-  let updatePassword = false;
-  let hashedNewPassword = '';
-
-  if (currentPassword && newPassword) { // This condition now works correctly
-    // Basic validation for new password length (add more if needed)
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: "La nueva contraseña debe tener al menos 8 caracteres." });
+  try {
+    // 3. Si se subió un archivo nuevo (req.file existe)
+    if (req.file) {
+      console.log("Subiendo nueva imagen de perfil a Cloudinary...");
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      const uploadResult = await cloudinary.uploader.upload(base64Image, {
+          folder: "goica/profiles"
+      });
+      fotoPerfilUrl = uploadResult.secure_url; // Sobrescribe la URL
     }
-    try {
-      // Fetch current hash (No need for transaction just for this read)
+
+    // 4. Lógica de contraseña (tu código actual está bien)
+    let updatePassword = false;
+    let hashedNewPassword = '';
+    if (currentPassword && newPassword) {
+      // ... (tu lógica de bcrypt.compare y bcrypt.hash) ...
+      // (Asegúrate de que bcrypt esté importado)
       const [users] = await pool.query('SELECT Password FROM usuarios WHERE idUsuario = ?', [idUsuario]);
-      if (users.length === 0) {
-        return res.status(404).json({ message: "Usuario no encontrado" }); // Should not happen if token is valid
-      }
-      const currentHashedPassword = users[0].Password;
-
-      // Compare
-      const isMatch = await bcrypt.compare(currentPassword, currentHashedPassword);
-      if (!isMatch) {
-        return res.status(401).json({ message: "La contraseña actual es incorrecta." });
-      }
-
-      // Hash new password
+      if (users.length === 0) throw new Error("Usuario no encontrado");
+      const isMatch = await bcrypt.compare(currentPassword, users[0].Password);
+      if (!isMatch) return res.status(401).json({ message: "La contraseña actual es incorrecta." });
       const salt = await bcrypt.genSalt(10);
       hashedNewPassword = await bcrypt.hash(newPassword, salt);
       updatePassword = true;
-
-    } catch (passwordError) {
-      console.error("Error during password verification/hashing:", passwordError);
-      return res.status(500).json({ message: "Error al procesar la contraseña.", error: passwordError.message });
     }
-  }
 
-  try {
-    // Build UPDATE query dynamically
+    // 5. Construir y ejecutar la consulta SQL
     let sql = `UPDATE usuarios SET 
-                 nombreUsuario = ?, 
-                 ApellidoPa = ?, 
-                 ApellidoMa = ?, 
-                 telefono = ?,
-                 fotoPerfil = ?`; // Use Telefono if that's the column name
-    let params = [nombreUsuario, ApellidoPa, ApellidoMa, telefono, fotoPerfil];
+                 nombreUsuario = ?, ApellidoPa = ?, ApellidoMa = ?, 
+                 telefono = ?, fotoPerfil = ?`;
+    let params = [
+        nombreUsuario, 
+        ApellidoPa || null, 
+        ApellidoMa || null, 
+        telefono || null,
+        fotoPerfilUrl // Usa la URL (nueva o la que venía)
+    ];
 
     if (updatePassword) {
       sql += `, Password = ?`;
@@ -93,50 +90,63 @@ export const updateProfile = async (req, res) => {
     sql += ` WHERE idUsuario = ?`;
     params.push(idUsuario);
 
-    await pool.query(sql, params); // Execute update
+    await pool.query(sql, params);
 
-    // Fetch updated data (excluding password) to return
-    const [updatedUserRows] = await pool.query(
-      'SELECT idUsuario, nombreUsuario, ApellidoPa, ApellidoMa, Email, telefono, fotoPerfil FROM usuarios WHERE idUsuario = ?',
-      [idUsuario]
+    // 6. OBTENER DATOS ACTUALIZADOS Y CREAR NUEVO TOKEN
+    // (Esto es crucial para que el AuthContext se actualice)
+    const [rows] = await pool.query(
+        'SELECT u.*, r.nombreRol FROM usuarios u JOIN roles r ON u.idRol = r.idRol WHERE u.idUsuario = ?', 
+        [idUsuario]
     );
+    const user = rows[0];
+
+    const payload = {
+      id: user.idUsuario,
+      nombre: user.nombreUsuario, // Asegúrate que el token use 'nombre'
+      email: user.Email,         // Asegúrate que el token use 'email'
+      rol: user.nombreRol
+    };
+
+    const newToken = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '1h' 
+    });
 
     res.json({
       message: "Perfil actualizado exitosamente.",
-      user: updatedUserRows[0] // Return updated user data
+      token: newToken,     // 👈 Devuelve el nuevo token
+      user: payload      // 👈 Devuelve los nuevos datos del usuario
     });
 
   } catch (error) {
-    // Handle specific DB errors if needed (like duplicate email if it were changeable)
     console.error("Error updating profile in DB:", error);
     res.status(500).json({ message: "Error en el servidor al guardar.", error: error.message });
   }
 };
 
 export const uploadUserProfileImage = async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ message: "No se ha subido ningún archivo." });
-        }
-
-        // Optional: Get user ID if needed for folder structure, etc.
-        // const idUsuario = req.user.id;
-
-        // Convert buffer to base64 data URL for Cloudinary
-        const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-
-        // Upload to Cloudinary (adjust folder as needed)
-        const result = await cloudinary.uploader.upload(base64Image, {
-            folder: "goica/profiles" // Specific folder for profile pictures
-            // public_id: `user_${idUsuario}_profile`, // Optional: Custom public ID
-            // overwrite: true // Optional: Replace existing image with same public_id
-        });
-
-        // Return the secure URL provided by Cloudinary
-        res.json({ imageUrl: result.secure_url });
-
-    } catch (error) {
-        console.error("Error al subir imagen de perfil:", error);
-        res.status(500).json({ message: "Error al subir la imagen", error: error.message });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No se ha subido ningún archivo." });
     }
+
+    // Optional: Get user ID if needed for folder structure, etc.
+    // const idUsuario = req.user.id;
+
+    // Convert buffer to base64 data URL for Cloudinary
+    const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    // Upload to Cloudinary (adjust folder as needed)
+    const result = await cloudinary.uploader.upload(base64Image, {
+      folder: "goica/profiles" // Specific folder for profile pictures
+      // public_id: `user_${idUsuario}_profile`, // Optional: Custom public ID
+      // overwrite: true // Optional: Replace existing image with same public_id
+    });
+
+    // Return the secure URL provided by Cloudinary
+    res.json({ imageUrl: result.secure_url });
+
+  } catch (error) {
+    console.error("Error al subir imagen de perfil:", error);
+    res.status(500).json({ message: "Error al subir la imagen", error: error.message });
+  }
 };
