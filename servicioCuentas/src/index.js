@@ -7,7 +7,6 @@ import express from 'express';
 import authRoutes from './routes/auth.route.js';
 import socioRouter from './routes/socio.route.js';
 import userRoutes from './routes/user.routes.js';
-import usuariosRoutes from './routes/usuarios.routes.js';
 import adminUserRoutes from './routes/adminUser.routes.js';
 import adminSocioRoutes from './routes/adminSocio.routes.js';
 
@@ -20,7 +19,7 @@ app.use(express.json())
 app.use('/api/auth', authRoutes);
 app.use('/api/socio', socioRouter);
 app.use('/api/user', userRoutes);
-app.use('/api/usuarios', usuariosRoutes);
+
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/socios', adminSocioRoutes);
 

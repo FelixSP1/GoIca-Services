@@ -39,7 +39,6 @@ const cuentasProxyOptions = {
 app.use('/api/auth', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/socio', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/usuarios', proxy('http://localhost:8082', cuentasProxyOptions)); // ← NUEVO: Para perfil de usuario
 app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
 app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
 

@@ -36,10 +36,10 @@ export const updateProfile = async (req, res) => {
 
   // 1. Obtener campos de texto de req.body (Multer los parsea)
   const { nombreUsuario, ApellidoPa, ApellidoMa, telefono, currentPassword, newPassword } = req.body;
-  
+
   // 2. Obtener la URL de la foto existente (si el usuario no sube una nueva)
   // El frontend debe enviar la URL_actual si no se sube un archivo nuevo.
-  let fotoPerfilUrl = req.body.fotoPerfil_url || null;
+  let fotoPerfilUrl = req.body.fotoPerfil_url || req.body.fotoPerfil || null;
 
   if (!nombreUsuario) {
     return res.status(400).json({ message: "El nombre es obligatorio." });
@@ -51,7 +51,9 @@ export const updateProfile = async (req, res) => {
       console.log("Subiendo nueva imagen de perfil a Cloudinary...");
       const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
       const uploadResult = await cloudinary.uploader.upload(base64Image, {
-          folder: "goica/profiles"
+        folder: "goica/profiles",
+        overwrite: true,
+        resource_type: "image",
       });
       fotoPerfilUrl = uploadResult.secure_url; // Sobrescribe la URL
     }
@@ -59,6 +61,7 @@ export const updateProfile = async (req, res) => {
     // 4. Lógica de contraseña (tu código actual está bien)
     let updatePassword = false;
     let hashedNewPassword = '';
+
     if (currentPassword && newPassword) {
       // ... (tu lógica de bcrypt.compare y bcrypt.hash) ...
       // (Asegúrate de que bcrypt esté importado)
@@ -76,17 +79,18 @@ export const updateProfile = async (req, res) => {
                  nombreUsuario = ?, ApellidoPa = ?, ApellidoMa = ?, 
                  telefono = ?, fotoPerfil = ?`;
     let params = [
-        nombreUsuario, 
-        ApellidoPa || null, 
-        ApellidoMa || null, 
-        telefono || null,
-        fotoPerfilUrl // Usa la URL (nueva o la que venía)
+      nombreUsuario,
+      ApellidoPa || null,
+      ApellidoMa || null,
+      telefono || null,
+      fotoPerfilUrl // Usa la URL (nueva o la que venía)
     ];
 
     if (updatePassword) {
       sql += `, Password = ?`;
       params.push(hashedNewPassword);
     }
+
     sql += ` WHERE idUsuario = ?`;
     params.push(idUsuario);
 
@@ -95,8 +99,8 @@ export const updateProfile = async (req, res) => {
     // 6. OBTENER DATOS ACTUALIZADOS Y CREAR NUEVO TOKEN
     // (Esto es crucial para que el AuthContext se actualice)
     const [rows] = await pool.query(
-        'SELECT u.*, r.nombreRol FROM usuarios u JOIN roles r ON u.idRol = r.idRol WHERE u.idUsuario = ?', 
-        [idUsuario]
+      'SELECT u.*, r.nombreRol FROM usuarios u JOIN roles r ON u.idRol = r.idRol WHERE u.idUsuario = ?',
+      [idUsuario]
     );
     const user = rows[0];
 
@@ -108,13 +112,16 @@ export const updateProfile = async (req, res) => {
     };
 
     const newToken = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: '1h' 
+      expiresIn: '1h'
     });
 
     res.json({
       message: "Perfil actualizado exitosamente.",
-      token: newToken,     // 👈 Devuelve el nuevo token
-      user: payload      // 👈 Devuelve los nuevos datos del usuario
+      token: newToken,
+      user: {
+        ...payload,
+        fotoPerfil: user.fotoPerfil, // 👈 se añade aquí
+      },
     });
 
   } catch (error) {
