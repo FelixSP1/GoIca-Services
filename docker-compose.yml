@@ -1,0 +1,82 @@
+version: '3.9'
+services:
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8089:8089"
+    env_file:
+      - ./gateway/.env
+    depends_on:
+      - cuentas
+      - interaccion
+      - gamificacion
+      - noticias
+      - graficos
+      - contenido
+      - administracion
+    restart: always
+
+  cuentas:
+    build: ./cuentas
+    container_name: cuentas
+    ports:
+      - "8082:8082"
+    env_file:
+      - ./cuentas/.env
+    restart: always
+
+  interaccion:
+    build: ./interaccion
+    container_name: interaccion
+    ports:
+      - "8083:8083"
+    env_file:
+      - ./interaccion/.env
+    restart: always
+
+  gamificacion:
+    build: ./gamificacion
+    container_name: gamificacion
+    ports:
+      - "8084:8084"
+    env_file:
+      - ./gamificacion/.env
+    restart: always
+    
+  noticias:
+    build: ./noticias
+    container_name: noticias
+    ports:
+      - "8093:8093"
+    env_file:
+      - ./noticias/.env
+    restart: always
+
+  graficos:
+    build: ./graficos
+    container_name: graficos
+    ports:
+      - "8092:8092"
+    env_file:
+      - ./graficos/.env
+    restart: always
+
+  contenido:
+    build: ./contenido
+    container_name: contenido
+    ports:
+      - "8091:8091"
+    env_file:
+      - ./contenido/.env
+    restart: always
+
+  administracion:
+    build: ./administracion
+    container_name: administracion
+    ports:
+      - "8085:8085"
+    env_file:
+      - ./administracion/.env
+    restart: always
+    
