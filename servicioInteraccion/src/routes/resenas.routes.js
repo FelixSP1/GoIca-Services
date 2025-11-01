@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { crearResena, getAllResenas, getResenasPorLugar, getResenasPorUsuario} from '../controller/resenas.controller.js';
-import { authRequired } from '../middleware/validateToken.js';
+import { authRequired } from '../middleware/validatetoken.js';
 import { authorizeRole} from '../middleware/validateRole.js';
 
 const router = Router();

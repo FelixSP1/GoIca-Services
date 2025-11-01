@@ -31,7 +31,7 @@ const cuentasProxyOptions = {
         destinationPath = `/api/${servicePrefix}${req.url}`;
       }
     }
-    console.log(`[Gateway] -> Cuentas: http://localhost:8082${destinationPath}`);
+    console.log(`[Gateway] -> Cuentas: http://cuentas:8082${destinationPath}`);
     return destinationPath;
   },
   proxyErrorHandler: (err, res, next) => { /* ... error handler ... */ }
@@ -91,7 +91,7 @@ app.use('/api/traduccion', createProxyMiddleware({
 const graficosProxyOptions = {
   proxyReqPathResolver: (req) => {
       const destinationPath = `/api/charts${req.url}`; 
-      console.log(`[Gateway] -> Gráficos: http://localhost:8092${destinationPath}`);
+      console.log(`[Gateway] -> Gráficos: http://graficos:8092${destinationPath}`);
       return destinationPath;
   },
 };
@@ -101,7 +101,7 @@ app.use('/api/graficos', proxy(process.env.GRAFICOS_URL, graficosProxyOptions));
 const noticiasProxyOptions = {
   proxyReqPathResolver: (req) => {
       const destinationPath = req.originalUrl; 
-      console.log(`[Gateway] -> Noticias: http://localhost:8093${destinationPath}`);
+      console.log(`[Gateway] -> Noticias: http://noticias:8093${destinationPath}`);
       return destinationPath;
   },
 };
