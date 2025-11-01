@@ -1,6 +1,6 @@
 services:
   gateway:
-    build: ./gateway
+    build: ./servicioGateway
     container_name: gateway
     ports:
       - "8089:8089"
@@ -15,49 +15,49 @@ services:
     restart: always
 
   cuentas:
-    build: ./cuentas
+    build: ./servicioCuentas
     container_name: cuentas
     ports:
       - "8082:8082"
     restart: always
 
   interaccion:
-    build: ./interaccion
+    build: ./servicioInteraccion
     container_name: interaccion
     ports:
       - "8083:8083"
     restart: always
 
-  gamificacion:
-    build: ./gamificacion
+  recompensas:
+    build: ./servicioRecompensas
     container_name: gamificacion
     ports:
       - "8084:8084"
     restart: always
     
   noticias:
-    build: ./noticias
+    build: ./servicioNoticias
     container_name: noticias
     ports:
       - "8093:8093"
     restart: always
 
   graficos:
-    build: ./graficos
+    build: ./servicioGraficos
     container_name: graficos
     ports:
       - "8092:8092"
     restart: always
 
   contenido:
-    build: ./contenido
+    build: ./servicioContenido
     container_name: contenido
     ports:
       - "8091:8091"
     restart: always
 
   administracion:
-    build: ./administracion
+    build: ./servicioAdministracion
     container_name: administracion
     ports:
       - "8085:8085"
