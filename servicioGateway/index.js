@@ -31,20 +31,20 @@ const cuentasProxyOptions = {
         destinationPath = `/api/${servicePrefix}${req.url}`;
       }
     }
-    console.log(`[Gateway] -> Cuentas: http://localhost:8082${destinationPath}`);
+    console.log(`[Gateway] -> Cuentas: http://cuentas:8082${destinationPath}`);
     return destinationPath;
   },
   proxyErrorHandler: (err, res, next) => { /* ... error handler ... */ }
 };
-app.use('/api/auth', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/socio', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/auth', proxy('http://cuentas:8082', cuentasProxyOptions));
+app.use('/api/socio', proxy('http://cuentas:8082', cuentasProxyOptions));
+app.use('/api/user', proxy('http://cuentas:8082', cuentasProxyOptions));
+app.use('/api/admin/users', proxy('http://cuentas:8082', cuentasProxyOptions));
+app.use('/api/admin/socios', proxy('http://cuentas:8082', cuentasProxyOptions));
 
 // === Microservicio de Administración ===
 app.use('/api/admin', createProxyMiddleware({
-  target: 'http://localhost:8085',
+  target: 'http://administracion:8085',
   changeOrigin: true,
   selfHandleResponse: false, // no interceptar respuesta
   onProxyReq: (proxyReq, req, res) => {
@@ -63,19 +63,19 @@ app.use('/api/admin', createProxyMiddleware({
 
 // === Microservicio de Contenido ===
 app.use('/api/contenido', createProxyMiddleware({
-  target: 'http://localhost:8091',
+  target: 'http://contenido:8091',
   changeOrigin: true
 }));
 
 // === Microservicio de Interacción ===
 app.use('/api/interaccion', createProxyMiddleware({
-  target: 'http://localhost:8083',
+  target: 'http://interaccion:8083',
   changeOrigin: true
 }));
 
 // === Microservicio de Gamificación ===
 app.use('/api/gamificacion', createProxyMiddleware({
-  target: 'http://localhost:8084',
+  target: 'http://gamificacion:8084',
   changeOrigin: true
 }));
 
@@ -83,7 +83,7 @@ app.use('/api/gamificacion', createProxyMiddleware({
 
 // === Microservicio de Traducción ===
 app.use('/api/traduccion', createProxyMiddleware({
-  target: 'http://localhost:8086',
+  target: 'http://traduccion:8086',
   changeOrigin: true
 }));
 
@@ -91,22 +91,22 @@ app.use('/api/traduccion', createProxyMiddleware({
 const graficosProxyOptions = {
   proxyReqPathResolver: (req) => {
       const destinationPath = `/api/charts${req.url}`; 
-      console.log(`[Gateway] -> Gráficos: http://localhost:8092${destinationPath}`);
+      console.log(`[Gateway] -> Gráficos: http://graficos:8092${destinationPath}`);
       return destinationPath;
   },
 };
-app.use('/api/graficos', proxy('http://localhost:8092', graficosProxyOptions));
+app.use('/api/graficos', proxy('http://graficos:8092', graficosProxyOptions));
 
 // === Microservicio de Noticias ===
 const noticiasProxyOptions = {
   proxyReqPathResolver: (req) => {
       const destinationPath = req.originalUrl; 
-      console.log(`[Gateway] -> Noticias: http://localhost:8093${destinationPath}`);
+      console.log(`[Gateway] -> Noticias: http://noticias:8093${destinationPath}`);
       return destinationPath;
   },
 };
 
-app.use('/api/noticias', proxy('http://localhost:8093', noticiasProxyOptions));
+app.use('/api/noticias', proxy('http://noticias:8093', noticiasProxyOptions));
 
 // Ruta de prueba del Gateway
 app.get('/api', (req, res) => {
