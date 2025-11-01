@@ -36,15 +36,15 @@ const cuentasProxyOptions = {
   },
   proxyErrorHandler: (err, res, next) => { /* ... error handler ... */ }
 };
-app.use('/api/auth', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/socio', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/user', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/admin/users', proxy('http://localhost:8082', cuentasProxyOptions));
-app.use('/api/admin/socios', proxy('http://localhost:8082', cuentasProxyOptions));
+app.use('/api/auth', proxy(process.env.CUENTAS_URL, cuentasProxyOptions));
+app.use('/api/socio', proxy(process.env.CUENTAS_URL, cuentasProxyOptions));
+app.use('/api/user', proxy(process.env.CUENTAS_URL, cuentasProxyOptions));
+app.use('/api/admin/users', proxy(process.env.CUENTAS_URL, cuentasProxyOptions));
+app.use('/api/admin/socios', proxy(process.env.CUENTAS_URL, cuentasProxyOptions));
 
 // === Microservicio de Administración ===
 app.use('/api/admin', createProxyMiddleware({
-  target: 'http://localhost:8085',
+  target: process.env.ADMINISTRACION_URL,
   changeOrigin: true,
   selfHandleResponse: false, // no interceptar respuesta
   onProxyReq: (proxyReq, req, res) => {
@@ -63,19 +63,19 @@ app.use('/api/admin', createProxyMiddleware({
 
 // === Microservicio de Contenido ===
 app.use('/api/contenido', createProxyMiddleware({
-  target: 'http://localhost:8091',
+  target: process.env.CONTENIDO_URL,
   changeOrigin: true
 }));
 
 // === Microservicio de Interacción ===
 app.use('/api/interaccion', createProxyMiddleware({
-  target: 'http://localhost:8083',
+  target: process.env.INTERACCION_URL,
   changeOrigin: true
 }));
 
 // === Microservicio de Gamificación ===
 app.use('/api/gamificacion', createProxyMiddleware({
-  target: 'http://localhost:8084',
+  target: process.env.GAMIFICACION_URL,
   changeOrigin: true
 }));
 
@@ -83,7 +83,7 @@ app.use('/api/gamificacion', createProxyMiddleware({
 
 // === Microservicio de Traducción ===
 app.use('/api/traduccion', createProxyMiddleware({
-  target: 'http://localhost:8086',
+  target: process.env.TRADUCCION_URL,
   changeOrigin: true
 }));
 
@@ -95,7 +95,7 @@ const graficosProxyOptions = {
       return destinationPath;
   },
 };
-app.use('/api/graficos', proxy('http://localhost:8092', graficosProxyOptions));
+app.use('/api/graficos', proxy(process.env.GRAFICOS_URL, graficosProxyOptions));
 
 // === Microservicio de Noticias ===
 const noticiasProxyOptions = {
@@ -106,7 +106,7 @@ const noticiasProxyOptions = {
   },
 };
 
-app.use('/api/noticias', proxy('http://localhost:8093', noticiasProxyOptions));
+app.use('/api/noticias', proxy(process.env.NOTICIAS_URL, noticiasProxyOptions));
 
 // Ruta de prueba del Gateway
 app.get('/api', (req, res) => {
