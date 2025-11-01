@@ -7,7 +7,7 @@ services:
     depends_on:
       - cuentas
       - interaccion
-      - gamificacion
+      - recompensas
       - noticias
       - graficos
       - contenido
