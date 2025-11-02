@@ -74,7 +74,7 @@ app.use('/api/interaccion', createProxyMiddleware({
 }));
 
 // === Microservicio de Gamificación ===
-app.use('/api/recompensas', createProxyMiddleware({
+app.use('/api/recompensa', createProxyMiddleware({
   target: process.env.GAMIFICACION_URL,
   changeOrigin: true
 }));
