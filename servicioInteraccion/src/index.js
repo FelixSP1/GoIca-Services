@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 8083;
 
 app.use(express.json());
 app.use(cors());
-app. use('/', resenasRoutes);
+app.use('/api/interaccion', resenasRoutes);
 
 app.listen(PORT, () =>{
     console.log(`Servicio de Interacción ejecutandose en el puerto: ${PORT}`);
