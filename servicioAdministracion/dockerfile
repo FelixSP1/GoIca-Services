@@ -32,4 +32,4 @@ ENV PORT=8085
 EXPOSE 8085
 
 # Comando de inicio
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]

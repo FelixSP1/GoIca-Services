@@ -32,4 +32,4 @@ ENV PORT=8082
 EXPOSE 8082
 
 # Comando de inicio
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]
