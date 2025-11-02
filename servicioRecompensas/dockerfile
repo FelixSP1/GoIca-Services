@@ -32,4 +32,4 @@ ENV PORT=8084
 EXPOSE 8084
 
 # Comando de inicio
-CMD ["node", "api.js"]
+CMD ["node", "index.js"]
