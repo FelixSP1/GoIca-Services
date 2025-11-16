@@ -57,8 +57,11 @@ services:
     restart: always
 
   puntos:
-    build: ./servicioPuntos
+    build:
+      context: ./servicioPuntos
+      dockerfile: Dockerfile
     ports:
       - "8097:8097"
     restart: always
+
     
