@@ -11,7 +11,6 @@ services:
       - graficos
       - contenido
       - administracion
-      - puntos
     restart: always
 
   puntos:
