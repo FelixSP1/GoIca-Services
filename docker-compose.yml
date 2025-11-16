@@ -11,7 +11,6 @@ services:
       - graficos
       - contenido
       - administracion
-      - puntos
     restart: always
 
   cuentas:
@@ -54,14 +53,6 @@ services:
     build: ./servicioAdministracion
     ports:
       - "8085:8085"
-    restart: always
-
-  puntos:
-    build:
-      context: ./servicioPuntos
-      dockerfile: Dockerfile
-    ports:
-      - "8097:8097"
     restart: always
 
     
