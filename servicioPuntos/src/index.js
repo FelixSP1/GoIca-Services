@@ -16,7 +16,7 @@ app.use(express.json());
 app.get("/", (req, res) => res.json({ message: "Microservicio Gamificación OK" }));
 
 // Rutas
-app.use("/api/gamificacion", puntosRoutes);
+app.use("/api/puntos", puntosRoutes);
 
 app.listen(PORT, () => {
   console.log(`Gamificación corriendo en puerto ${PORT}`);

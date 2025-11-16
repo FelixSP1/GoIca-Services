@@ -59,6 +59,6 @@ services:
   puntos:
     build: ./servicioPuntos
     ports:
-      - "8087:8087"
+      - "8097:8097"
     restart: always
     
