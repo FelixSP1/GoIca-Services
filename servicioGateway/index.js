@@ -79,6 +79,11 @@ app.use('/api/gamificacion', createProxyMiddleware({
   changeOrigin: true
 }));
 
+// === Microservicio de Gamificación ===
+app.use('/api/puntos', createProxyMiddleware({
+  target: process.env.PUNTOS_URL,
+  changeOrigin: true
+}));
 
 
 // === Microservicio de Traducción ===

@@ -11,6 +11,7 @@ services:
       - graficos
       - contenido
       - administracion
+      - puntos
     restart: always
 
   cuentas:
@@ -53,5 +54,11 @@ services:
     build: ./servicioAdministracion
     ports:
       - "8085:8085"
+    restart: always
+
+    cuentas:
+    build: ./servicioPuntos
+    ports:
+      - "8087:8087"
     restart: always
     
