@@ -11,12 +11,12 @@ services:
       - graficos
       - contenido
       - administracion
+      - puntos
     restart: always
 
   puntos:
     build:
       context: ./servicioPuntos
-      dockerfile: Dockerfile
     ports:
       - "8097:8097"
     restart: always
