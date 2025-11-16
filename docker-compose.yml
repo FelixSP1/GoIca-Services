@@ -56,7 +56,7 @@ services:
       - "8085:8085"
     restart: always
 
-    cuentas:
+  puntos:
     build: ./servicioPuntos
     ports:
       - "8087:8087"
