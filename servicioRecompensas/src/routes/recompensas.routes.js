@@ -22,7 +22,8 @@ import {
   deleteRecompensa,
   getMisRecompensas,
   getSocioResenas,  // Nombre corregido (Socio en singular)
-  deleteSocioResena
+  deleteSocioResena,
+  getHistorialPuntos
 } from '../controller/recompensas.controller.js';
 
 const router = Router();
@@ -32,6 +33,7 @@ router.get('/recompensas', getRecompensas);
 router.get('/puntos', authRequired, getPuntosUsuario);
 router.post('/recompensas/canjear', authRequired, canjearRecompensa);
 router.post('/check-in', authRequired, checkIn);
+router.get('/historial', authRequired, getHistorialPuntos);
 
 
 // --- RUTAS DEL DASHBOARD DE SOCIO ---

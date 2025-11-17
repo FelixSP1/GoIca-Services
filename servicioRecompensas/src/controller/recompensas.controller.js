@@ -131,6 +131,25 @@ export const checkIn = async (req, res) => {
   }
 };
 
+// --- 👇 FUNCIÓN AÑADIDA 👇 ---
+/**
+ * RUTA: GET /historial
+ * Obtener historial de movimientos del usuario (para la app móvil)
+ */
+export const getHistorialPuntos = async (req, res) => {
+  try {
+    const idUsuario = req.user.id;
+    const [rows] = await pool.query(
+      "SELECT idHistorial, puntos, tipoMovimiento, fechaMovimiento FROM historial_puntos WHERE idUsuario = ? ORDER BY fechaMovimiento DESC LIMIT 200",
+      [idUsuario]
+    );
+    return res.json(rows); // Devuelve el array directamente
+  } catch (error) {
+    console.error("getHistorialPuntos error:", error);
+    return res.status(500).json({ error: "Error interno" });
+  }
+};
+
 //----- Funciones Dashboard de Socio ---- 
 
 const getSocioIdFromToken = async (idUsuario) => {

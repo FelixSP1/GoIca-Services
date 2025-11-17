@@ -1,20 +1,43 @@
 // src/routes/puntos.routes.js
 import { Router } from "express";
-import { verifyToken } from "../middleware/auth.js";
-import { getPuntos, scanQR, scanBLE, getHistorial } from "../controllers/puntos.controller.js";
+import { authRequired } from "../middleware/auth.js";
+import { 
+  getPuntos,         // Renombrado a getPuntosUsuario en el controlador
+  getHistorial,      // Renombrado a getHistorialPuntos en el controlador
+  scanQR,            // Renombrado a checkInQR en el controlador
+  scanBLE,           // Renombrado a checkInBLE en el controlador
+  getRecompensas,      // Importa la nueva función
+  canjearRecompensa    // Importa la nueva función
+} from "../controllers/puntos.controller.js";
 
 const router = Router();
 
-// GET /api/gamificacion/puntos  -> devuelve puntaje del usuario autenticado
-router.get("/puntos", verifyToken, getPuntos);
+// Renombrar funciones para que coincidan con el controlador actualizado:
+const {
+  getPuntosUsuario: getPuntos,
+  getHistorialPuntos: getHistorial,
+  checkInQR: scanQR,
+  checkInBLE: scanBLE
+} = await import("../controllers/puntos.controller.js");
 
-// POST /api/gamificacion/qr -> body: { codigo }
-router.post("/qr", verifyToken, scanQR);
+// GET /puntos -> (Llamado por RewardsScreen: /gamificacion/puntos)
+router.get("/puntos", authRequired, getPuntos);
 
-// POST /api/gamificacion/ble -> body: { codigo }
-router.post("/ble", verifyToken, scanBLE);
+// POST /check-in-qr -> (Llamado por QRScannerScreen: /gamificacion/check-in-qr)
+router.post("/check-in-qr", authRequired, scanQR);
 
-// GET /api/gamificacion/historial -> historial del usuario
-router.get("/historial", verifyToken, getHistorial);
+// POST /check-in-ble -> (Llamado por RewardsScreen: /gamificacion/check-in-ble)
+router.post("/check-in-ble", authRequired, scanBLE);
+
+// GET /historial -> (Llamado por ProfileScreen: /gamificacion/historial)
+router.get("/historial", authRequired, getHistorial);
+
+// --- 👇 RUTAS NUEVAS AÑADIDAS 👇 ---
+
+// GET /recompensas -> (Llamado por RewardsScreen: /gamificacion/recompensas)
+router.get("/recompensas", authRequired, getRecompensas);
+
+// POST /recompensas/canjear -> (Llamado por RewardsScreen: /gamificacion/recompensas/canjear)
+router.post("/recompensas/canjear", authRequired, canjearRecompensa);
 
 export default router;
