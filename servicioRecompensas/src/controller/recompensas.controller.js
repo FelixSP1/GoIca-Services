@@ -96,19 +96,22 @@ export const checkIn = async (req, res) => {
   // (Esta función estaba bien)
   const { codigoUnico } = req.body;
   const idUsuario = req.user.id;
+  const codigoLimpio = codigoUnico ? codigoUnico.trim() : null;
 
   // --- 👇 AÑADE ESTA LÍNEA DE DEPURACIÓN 👇 ---
-  console.log(`[CheckIn] Usuario ${idUsuario} intentó registrar el código: '${codigoUnico}'`);
+  console.log(`[CheckIn] Usuario ${idUsuario} intentó registrar el código: '${codigoUnico}' (Limpio: '${codigoLimpio}')`); // Log mejorado
   // -----------------------------------------
-  
+
   let connection;
   try {
     connection = await pool.getConnection();
     await connection.beginTransaction();
-    const [checkpoints] = await connection.query('SELECT * FROM checkpoints WHERE codigoUnico = ?', [codigoUnico]);
+
+    const [checkpoints] = await connection.query('SELECT * FROM checkpoints WHERE codigoUnico = ?', [codigoLimpio]);
+
     if (checkpoints.length === 0) {
       await connection.rollback();
-      return res.status(404).json({ message: "Punto de control no válido." });
+      return res.status(404).json({ message: `Punto de control no válido: ${codigoLimpio}` });
     }
     const checkpoint = checkpoints[0];
     const [historial] = await connection.query(
