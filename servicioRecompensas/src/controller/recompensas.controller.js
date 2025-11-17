@@ -96,6 +96,11 @@ export const checkIn = async (req, res) => {
   // (Esta función estaba bien)
   const { codigoUnico } = req.body;
   const idUsuario = req.user.id;
+
+  // --- 👇 AÑADE ESTA LÍNEA DE DEPURACIÓN 👇 ---
+  console.log(`[CheckIn] Usuario ${idUsuario} intentó registrar el código: '${codigoUnico}'`);
+  // -----------------------------------------
+  
   let connection;
   try {
     connection = await pool.getConnection();
