@@ -7,7 +7,7 @@ import apiRoutes from './routes/lugares.routes.js';
 import { checkDbConnection } from './config/db.js';
 
 const app = express();
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 8091;
 
 const startServer = async () => {
   await checkDbConnection();
