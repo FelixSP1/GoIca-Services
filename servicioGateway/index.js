@@ -6,150 +6,105 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 const app = express();
 const PORT = process.env.PORT || 8089;
 
-console.log("--- 🚀 INICIANDO GATEWAY V2.0 (DEBUG MODE) ---");
+console.log("--- 🚀 INICIANDO GATEWAY V4.0 (MASTER FIX) ---");
 
-// =======================================================================
-// 1. SEGURIDAD C.O.R.S. (CONFIGURACIÓN ROBUSTA)
-// =======================================================================
-const corsOptions = {
-  origin: true, // Refleja el origen de la petición (acepta a tu frontend v2)
-  credentials: true, // PERMITE cookies y headers de autorización
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Accept', 
-    'Origin', 
-    'Access-Control-Allow-Origin'
-  ]
-};
-
-// Aplicar CORS a todas las rutas
-app.use(cors(corsOptions));
-
-// IMPORTANTE: Responder a las peticiones PREFLIGHT (OPTIONS) antes de nada
-app.options(/.*/, cors(corsOptions));
-
-// 2. LOGGING DETALLADO (Para ver qué llega exactamente)
+// 1. MIDDLEWARE MANUAL DE CORS (Fuerza bruta para asegurar que pase)
 app.use((req, res, next) => {
-    console.log(`\n📥 [ENTRADA] Método: ${req.method} | URL Original: ${req.originalUrl}`);
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
     next();
 });
 
-// 3. HEALTH CHECK (Ruta de prueba prioritaria)
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: "OK", 
-        message: "Gateway activo y escuchando", 
-        timestamp: new Date().toISOString() 
-    });
+// Log de entrada
+app.use((req, res, next) => {
+    console.log(`[GATEWAY] ${req.method} ${req.originalUrl}`);
+    next();
 });
 
 // =======================================================================
-// 4. CONFIGURACIÓN DE PROXIES
+// HELPER PARA INYECTAR HEADERS CORS EN LA RESPUESTA
 // =======================================================================
+const onProxyResFix = (proxyRes, req, res) => {
+    const origin = req.headers.origin || '*';
+    proxyRes.headers['Access-Control-Allow-Origin'] = origin;
+    proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+};
 
-// Función auxiliar para configurar proxies comunes
-const createServiceProxy = (target, pathRewriteRule = null) => {
-    return createProxyMiddleware({
-        target: target,
+// =======================================================================
+// 1. SERVICIO CUENTAS (EL IMPORTANTE)
+// =======================================================================
+// Necesita pathRewrite especial para NO perder el prefijo /api/auth
+app.use(
+    ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'],
+    createProxyMiddleware({
+        target: process.env.CUENTAS_URL || 'http://cuentas_container:8082',
         changeOrigin: true,
-        pathRewrite: pathRewriteRule,
-        
-        // --- AQUÍ ESTÁ LA MAGIA ---
-        // Interceptamos la respuesta y le pegamos el permiso a la fuerza
-        onProxyRes: (proxyRes, req, res) => {
-            // Permitir el origen que viene en la petición (Dinámico)
-            const origin = req.headers.origin;
-            if (origin) {
-                proxyRes.headers['Access-Control-Allow-Origin'] = origin;
-            } else {
-                // Si no hay origen (postman/curl), permitir todo o dejarlo
-                proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-            }
-
-            // Permitir credenciales y métodos
-            proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
-            proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
-            proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin';
-        },
-        // ---------------------------
-
+        // ESTA ES LA LÍNEA QUE FALTABA EN LA V3:
+        pathRewrite: (path, req) => req.baseUrl + path, 
+        onProxyRes: onProxyResFix, // Inyectamos CORS a la salida
         onProxyReq: (proxyReq, req, res) => {
-            console.log(`🔌 [PROXY SALIENTE] Hacia: ${target}${proxyReq.path}`);
-            
-            if (req.body && Object.keys(req.body).length > 0) {
+             console.log(`🚀 [CUENTAS] Enviando: ${req.baseUrl}${req.url}`);
+             // Body fix
+             if (req.body && Object.keys(req.body).length > 0) {
                 const bodyData = JSON.stringify(req.body);
                 proxyReq.setHeader('Content-Type', 'application/json');
                 proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                 proxyReq.write(bodyData);
             }
-        },
-        onError: (err, req, res) => {
-            console.error(`🔥 [ERROR PROXY] Falló conexión a ${target}: ${err.message}`);
-            // Aseguramos CORS incluso en el error
-            res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-            res.setHeader('Access-Control-Allow-Credentials', 'true');
-            res.status(502).json({ error: 'Bad Gateway', details: err.message });
+        }
+    })
+);
+
+// =======================================================================
+// 2. OTROS SERVICIOS (Con Rewrite estándar)
+// =======================================================================
+
+// Función para crear proxies simples que borran el prefijo
+const createSimpleProxy = (target, rewriteKey, rewriteValue = '') => {
+    return createProxyMiddleware({
+        target: target,
+        changeOrigin: true,
+        pathRewrite: { [rewriteKey]: rewriteValue },
+        onProxyRes: onProxyResFix,
+        onProxyReq: (proxyReq, req) => {
+             console.log(`🚀 [PROXY] Enviando a: ${target}${proxyReq.path}`);
+             if (req.body && Object.keys(req.body).length > 0) {
+                const bodyData = JSON.stringify(req.body);
+                proxyReq.setHeader('Content-Type', 'application/json');
+                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                proxyReq.write(bodyData);
+            }
         }
     });
 };
 
-// --- A. SERVICIO CUENTAS ---
-// Si tu microservicio espera recibir "/api/auth/login", NO uses pathRewrite.
-// Si espera "/auth/login", usa pathRewrite para quitar "/api".
-// Asumiremos que el microservicio Cuentas YA tiene los prefijos definidos en su código.
-app.use(
-    ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'],
-    createServiceProxy(
-        process.env.CUENTAS_URL || 'http://cuentas_container:8082',
-        null // No reescribimos nada, se envía tal cual llega.
-    )
-);
-
-// --- B. ADMINISTRACIÓN (Quita /api/admin) ---
-app.use('/api/admin', createServiceProxy(
-    process.env.ADMINISTRACION_URL || 'http://administracion_container:8085',
-    { '^/api/admin': '' } // De "/api/admin/lugares" pasa a "/lugares"
+// GRAFICOS (Graficos -> Charts)
+app.use('/api/graficos', createSimpleProxy(
+    process.env.GRAFICOS_URL || 'http://graficos_container:8092', 
+    '^/api/graficos', 
+    '/api/charts'
 ));
 
-// --- C. SERVICIO GRÁFICOS ---
-app.use('/api/graficos', createServiceProxy(
-    process.env.GRAFICOS_URL || 'http://graficos_container:8092',
-    { '^/api/graficos': '/api/charts' } // Traducción específica
-));
+// ADMIN, CONTENIDO, ETC (Borran prefijo)
+app.use('/api/admin', createSimpleProxy(process.env.ADMINISTRACION_URL || 'http://administracion_container:8085', '^/api/admin'));
+app.use('/api/contenido', createSimpleProxy(process.env.CONTENIDO_URL || 'http://contenido_container:8091', '^/api/contenido'));
+app.use('/api/noticias', createSimpleProxy(process.env.NOTICIAS_URL || 'http://noticias_container:8093', '^/api/noticias'));
+app.use('/api/interaccion', createSimpleProxy(process.env.INTERACCION_URL || 'http://interaccion_container:8083', '^/api/interaccion'));
+app.use('/api/gamificacion', createSimpleProxy(process.env.GAMIFICACION_URL || 'http://recompensas_container:8084', '^/api/gamificacion'));
+app.use('/api/traduccion', createSimpleProxy(process.env.TRADUCCION_URL || 'http://traduccion_container:8086', '^/api/traduccion'));
+app.use('/api/puntos', createSimpleProxy(process.env.PUNTOS_URL || 'http://puntos_container:8097', '^/api/puntos'));
 
-// --- D. OTROS SERVICIOS (Quitan prefijo) ---
-const serviciosSimples = [
-    { route: '/api/contenido', target: process.env.CONTENIDO_URL || 'http://contenido_container:8091' },
-    { route: '/api/interaccion', target: process.env.INTERACCION_URL || 'http://interaccion_container:8083' },
-    { route: '/api/gamificacion', target: process.env.GAMIFICACION_URL || 'http://recompensas_container:8084' },
-    { route: '/api/traduccion', target: process.env.TRADUCCION_URL || 'http://traduccion_container:8086' },
-    { route: '/api/noticias', target: process.env.NOTICIAS_URL || 'http://noticias_container:8093' },
-    { route: '/api/puntos', target: process.env.PUNTOS_URL || 'http://puntos_container:8097' },
-];
-
-serviciosSimples.forEach(svc => {
-    // La regla dinámica: '^/api/nombre' -> ''
-    const rewriteRule = {};
-    rewriteRule[`^${svc.route}`] = ''; 
-    
-    app.use(svc.route, createServiceProxy(svc.target, rewriteRule));
-});
-
-// =======================================================================
-// MANEJADOR DE ERRORES FINAL
-// =======================================================================
-app.use((req, res) => {
-    console.log(`⚠️ [404 FINAL] No se encontró ruta para: ${req.originalUrl}`);
-    res.status(404).json({ 
-        error: 'Ruta no encontrada en API Gateway', 
-        path: req.originalUrl,
-        tip: 'Verifica que la URL incluya el prefijo correcto (ej: /api/auth/...)' 
-    });
-});
+// RUTAS DE SALUD
+app.get('/', (req, res) => res.json({ status: "OK", msg: "Gateway V4 Active" }));
+app.get('/api/health', (req, res) => res.json({ status: "OK" }));
 
 app.listen(PORT, () => {
-    console.log(`✅ Gateway escuchando en puerto ${PORT}`);
+    console.log(`✅ Gateway V4 escuchando en puerto ${PORT}`);
 });
