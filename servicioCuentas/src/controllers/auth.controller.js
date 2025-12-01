@@ -41,6 +41,10 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { Email, Password } = req.body;
 
+  // DIAGNÓSTICO: Ver qué datos llegan
+    console.log("👉 Login intentado con:", { Email, Password });
+    console.log("👉 JWT_SECRET existe?", !!process.env.JWT_SECRET);
+
   if (!Email || !Password) {
     return res.status(400).json({ message: "Por favor, proporciona email y contraseña." });
   }
@@ -48,10 +52,12 @@ export const login = async (req, res) => {
   try {
 
     // Buscar usuario por email
+    console.log("⏳ Buscando usuario en DB...");
     const [users] = await pool.query(
       'SELECT u.*, r.nombreRol FROM usuarios u JOIN roles r ON u.idRol = r.idRol WHERE u.Email = ?', [Email]);
 
     if (users.length === 0) {
+      console.log("❌ Usuario no encontrado");
       return res.status(401).json({ message: "Credenciales inválidas." }); // Usuario no encontrado
     }
 
@@ -61,10 +67,13 @@ export const login = async (req, res) => {
     const isMatch = await bcrypt.compare(Password, user.Password);
 
     if (!isMatch) {
+      console.log("❌ Contraseña incorrecta");
       return res.status(401).json({ message: "Credenciales inválidas." }); // Contraseña incorrecta
     }
 
     // Si todo es correcto, crear el token JWT
+    // Crear token
+    console.log("⏳ Generando Token...");
     const payload = {
       id: user.idUsuario,
       nombre: user.nombreUsuario,
@@ -81,6 +90,8 @@ export const login = async (req, res) => {
     });
 
   } catch (error) {
+    // ESTO ES LO QUE NECESITAMOS VER EN EL LOG:
+    console.error("🔴 ERROR CRÍTICO EN LOGIN:", error);
     res.status(500).json({ message: "Error en el servidor.", error: error.message });
   }
 };
