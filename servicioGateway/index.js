@@ -6,55 +6,63 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 const app = express();
 const PORT = process.env.PORT || 8089;
 
-app.use(cors());
+// --- DIAGNÓSTICO AL INICIO ---
+console.log("--- INICIANDO GATEWAY ---");
+console.log("CUENTAS_URL detectada:", process.env.CUENTAS_URL || "¡VACÍA/UNDEFINED! ⚠️");
+console.log("CONTENIDO_URL detectada:", process.env.CONTENIDO_URL || "¡VACÍA/UNDEFINED! ⚠️");
+// -----------------------------
 
-// Log global para depurar (Te mostrará en la consola de Dokploy qué ruta entra y a cuál sale)
+app.use(cors({
+  origin: '*', // Permitir todo por ahora para descartar CORS
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+
+// Log de entrada
 app.use((req, res, next) => {
-  console.log(`[GATEWAY REQUEST] ${req.method} ${req.originalUrl}`);
+  console.log(`[GATEWAY IN] ${req.method} ${req.originalUrl}`);
   next();
 });
 
 // =======================================================================
-// GRUPO 1: SERVICIO CUENTAS
-// Este servicio YA TIENE prefijos /api/... en su código interno.
-// Por lo tanto, NO usamos pathRewrite. Pasamos la URL tal cual.
+// SERVICIO CUENTAS (Definición Explícita)
 // =======================================================================
-const cuentasTarget = process.env.CUENTAS_URL; // http://cuentas:8082
+const cuentasTarget = process.env.CUENTAS_URL;
 
-// Rutas de Cuentas (Auth, Socio, User, Admin)
-// Al no poner 'pathRewrite', si llega /api/auth/login, envía /api/auth/login. ¡Justo lo que cuentas espera!
-app.use(['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'], createProxyMiddleware({
-  target: cuentasTarget,
+if (!cuentasTarget) {
+  console.error("❌ ERROR CRÍTICO: No existe la variable CUENTAS_URL");
+}
+
+// Proxy específico para Auth (Login/Register)
+app.use('/api/auth', createProxyMiddleware({
+  target: cuentasTarget, // http://cuentas_container:8082
   changeOrigin: true,
+  // No usamos pathRewrite porque Cuentas espera /api/auth
   onProxyReq: (proxyReq, req, res) => {
-     console.log(`[PROXY -> CUENTAS] Enviando a: ${cuentasTarget}${req.originalUrl}`);
+     console.log(`[PROXY -> CUENTAS] Enviando Login a: ${cuentasTarget}${req.originalUrl}`);
   },
   onError: (err, req, res) => {
      console.error('[ERROR -> CUENTAS]', err.message);
-     res.status(500).json({ error: 'El servicio de Cuentas no responde.' });
+     res.status(500).json({ error: 'Fallo al conectar con Cuentas', details: err.message });
   }
 }));
 
-// =======================================================================
-// GRUPO 2: SERVICIO CONTENIDO (y otros que montan en Raíz '/')
-// Estos servicios esperan recibir /lugares, NO /api/contenido/lugares.
-// AQUÍ SÍ USAMOS pathRewrite para borrar el prefijo.
-// =======================================================================
+// Proxy para el resto de Cuentas
+app.use(['/api/socio', '/api/user', '/api/admin/users'], createProxyMiddleware({
+  target: cuentasTarget,
+  changeOrigin: true
+}));
 
-// --- Contenido ---
+// =======================================================================
+// SERVICIO CONTENIDO (Con Rewrite)
+// =======================================================================
 app.use('/api/contenido', createProxyMiddleware({
-  target: process.env.CONTENIDO_URL, // http://contenido:8091
+  target: process.env.CONTENIDO_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/contenido': '', // Borra /api/contenido de la URL
-  },
+  pathRewrite: { '^/api/contenido': '' }, // Borra el prefijo
   onProxyReq: (proxyReq, req, res) => {
-     // Aquí verás que la URL ya no tiene /api/contenido
-     console.log(`[PROXY -> CONTENIDO] Enviando a: ${process.env.CONTENIDO_URL} (Ruta reescrita)`);
-  },
-  onError: (err, req, res) => {
-     console.error('[ERROR -> CONTENIDO]', err.message);
-     res.status(500).json({ error: 'El servicio de Contenido no responde.' });
+     console.log(`[PROXY -> CONTENIDO] URL final: ${process.env.CONTENIDO_URL}${req.url}`);
   }
 }));
 
@@ -119,10 +127,22 @@ app.use('/api/noticias', createProxyMiddleware({
   pathRewrite: { '^/api/noticias': '' } // Borra el prefijo
 }));
 
-
 // Health Check del Gateway
 app.get('/api', (req, res) => {
   res.json({ status: 'OK', message: 'API Gateway funcionando 🚀' });
+});
+
+// --- MANEJADOR DE 404 DEL GATEWAY ---
+// Si la petición llega aquí, es que ninguna ruta de arriba coincidió
+app.use((req, res) => {
+  console.log(`[GATEWAY 404] No encontré ruta para: ${req.originalUrl}`);
+  res.status(404).json({ 
+    error: 'Ruta no encontrada en el Gateway', 
+    path: req.originalUrl,
+    variables_status: {
+        cuentas: process.env.CUENTAS_URL ? 'OK' : 'MISSING'
+    }
+  });
 });
 
 app.listen(PORT, () => {
