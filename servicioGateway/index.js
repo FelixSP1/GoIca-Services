@@ -153,9 +153,14 @@ app.use('/api/graficos', createProxyMiddleware({
 // =======================================================================
 // MANEJADOR FINAL
 // =======================================================================
+// Health Check de la Raíz del Gateway
+app.get('/', (req, res) => {
+    res.json({ status: "OK", message: "Gateway Root is Active." });
+});
 
-app.get('/api', (req, res) => {
-  res.json({ status: 'OK', message: 'API Gateway Full Activo 🚀' });
+// Health Check del API
+app.get('/api/health', (req, res) => {
+    res.json({ status: "OK", server: "Gateway Operational" });
 });
 
 // Manejador 404
