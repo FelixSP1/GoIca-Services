@@ -8,8 +8,28 @@ const PORT = process.env.PORT || 8089;
 
 console.log("--- 🚀 INICIANDO GATEWAY V2.0 (DEBUG MODE) ---");
 
-// 1. SEGURIDAD BASICA
-app.use(cors({ origin: '*' }));
+// =======================================================================
+// 1. SEGURIDAD C.O.R.S. (CONFIGURACIÓN ROBUSTA)
+// =======================================================================
+const corsOptions = {
+  origin: true, // Refleja el origen de la petición (acepta a tu frontend v2)
+  credentials: true, // PERMITE cookies y headers de autorización
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin', 
+    'Access-Control-Allow-Origin'
+  ]
+};
+
+// Aplicar CORS a todas las rutas
+app.use(cors(corsOptions));
+
+// IMPORTANTE: Responder a las peticiones PREFLIGHT (OPTIONS) antes de nada
+app.options('*', cors(corsOptions));
 
 // 2. LOGGING DETALLADO (Para ver qué llega exactamente)
 app.use((req, res, next) => {
