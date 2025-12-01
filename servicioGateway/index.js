@@ -56,11 +56,29 @@ const createServiceProxy = (target, pathRewriteRule = null) => {
         target: target,
         changeOrigin: true,
         pathRewrite: pathRewriteRule,
+        
+        // --- AQUÍ ESTÁ LA MAGIA ---
+        // Interceptamos la respuesta y le pegamos el permiso a la fuerza
+        onProxyRes: (proxyRes, req, res) => {
+            // Permitir el origen que viene en la petición (Dinámico)
+            const origin = req.headers.origin;
+            if (origin) {
+                proxyRes.headers['Access-Control-Allow-Origin'] = origin;
+            } else {
+                // Si no hay origen (postman/curl), permitir todo o dejarlo
+                proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+            }
+
+            // Permitir credenciales y métodos
+            proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+            proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+            proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin';
+        },
+        // ---------------------------
+
         onProxyReq: (proxyReq, req, res) => {
-            // Log para ver a dónde se está yendo realmente la petición
             console.log(`🔌 [PROXY SALIENTE] Hacia: ${target}${proxyReq.path}`);
             
-            // Fix para Body Parsing (si usas POST/PUT)
             if (req.body && Object.keys(req.body).length > 0) {
                 const bodyData = JSON.stringify(req.body);
                 proxyReq.setHeader('Content-Type', 'application/json');
@@ -70,7 +88,10 @@ const createServiceProxy = (target, pathRewriteRule = null) => {
         },
         onError: (err, req, res) => {
             console.error(`🔥 [ERROR PROXY] Falló conexión a ${target}: ${err.message}`);
-            res.status(502).json({ error: 'Bad Gateway - El microservicio no responde', details: err.message });
+            // Aseguramos CORS incluso en el error
+            res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            res.status(502).json({ error: 'Bad Gateway', details: err.message });
         }
     });
 };
