@@ -1,35 +1,30 @@
-# Etapa 1: Construcción (instalación de dependencias)
+# Etapa 1: Construcción
 FROM node:22-alpine AS build
 
-# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar los archivos del proyecto
 COPY package*.json ./
 
-# Instalar dependencias (solo producción si no necesitas dev)
-RUN npm install --production
+# Instalamos todo (incluyendo dev) para asegurar que se construya bien
+RUN npm install
 
-# Copiar el resto del código fuente
 COPY . .
 
-# Etapa 2: Ejecución
+# Etapa 2: Ejecución (Imagen limpia)
 FROM node:22-alpine
 
 WORKDIR /app
 
-# Copiar los archivos desde la etapa anterior
+# Copiamos solo los node_modules y el código desde la etapa anterior
 COPY --from=build /app /app
 
-# Copiar el .env del servicio
-COPY .env .env
+# --- AQUÍ ESTABA EL ERROR ---
+# BORRAMOS LA LÍNEA: COPY .env .env
+# Confiamos 100% en las variables que vienen del docker-compose.yml
 
-# Variables de entorno por defecto
 ENV NODE_ENV=production
 ENV PORT=8089
 
-# Exponer el puerto del servicio (cambia según el microservicio)
 EXPOSE 8089
 
-# Comando de inicio
 CMD ["node", "index.js"]
