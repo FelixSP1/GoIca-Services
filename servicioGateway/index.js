@@ -7,38 +7,53 @@ const app = express();
 const PORT = process.env.PORT || 8089;
 
 // --- DIAGNÓSTICO AL INICIO ---
-console.log("--- INICIANDO GATEWAY MAESTRO ---");
+console.log("--- INICIANDO GATEWAY MAESTRO FINAL ---");
 // -----------------------------
 
+// CONFIGURACIÓN DE SEGURIDAD (CORS)
 app.use(cors({
-  origin: '*',
+  origin: '*', // Permitir todo para depuración final
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
 // --- SOLUCIÓN PARA EL ERROR OPTIONS/PREFLIGHT ---
-app.options('*', cors()); // <--- AÑADE ESTA LÍNEA
+app.options('*', cors()); 
 
-// Log de entrada Global
+// =======================================================================
+// 1. RUTAS LOCALES (HEALTH CHECK) - PRIORIDAD MÁXIMA
+// =======================================================================
+// Movidas al tope para evitar que los proxies las capturen.
+app.get('/', (req, res) => {
+    res.json({ status: "OK", message: "Gateway Root is Active." });
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: "OK", server: "Gateway Operational" });
+});
+
+// Log de entrada Global (Middleware)
 app.use((req, res, next) => {
   console.log(`[GATEWAY GLOBAL] Recibido: ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// =======================================================================
-// 1. SERVICIO CUENTAS (Complejo - Mantiene prefijos)
-// =======================================================================
-const TARGET_CUENTAS = 'http://cuentas_container:8082';
 
+// =======================================================================
+// 2. PROXY RULES (RUTEO HACIA MICROSERVICIOS)
+// =======================================================================
+
+// --- SERVICIO CUENTAS (COMPLEJO: Mantiene prefijos) ---
+// Rutas: /api/auth, /api/socio, /api/user, /api/admin/users/socios
 app.use(
   ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'],
   createProxyMiddleware({
     target: process.env.CUENTAS_URL || 'http://cuentas_container:8082',
     changeOrigin: true,
+    // FIX: Reconstruye la ruta completa que Cuentas espera (ej: /api/auth/login)
     pathRewrite: (path, req) => {
-      // Si el path es /socios/stats, req.baseUrl es /api/admin/socios.
-      return req.baseUrl + path;
+      return req.baseUrl + req.url; 
     },
     onProxyReq: (proxyReq, req, res) => {
       console.log(`🚀 [PROXY -> CUENTAS] Enviando: ${req.baseUrl}${req.url}`);
@@ -50,120 +65,70 @@ app.use(
   })
 );
 
-// =======================================================================
-// 2. SERVICIOS QUE NECESITAN "RECORTAR" LA URL (pathRewrite)
-// =======================================================================
+// --- SERVICIO GRÁFICOS (TRADUCCIÓN DE RUTA) ---
+// Entra: /api/graficos/stats/general -> Sale: /api/charts/stats/general
+app.use('/api/graficos', createProxyMiddleware({
+  target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
+  changeOrigin: true,
+  pathRewrite: { 
+    '^/api/graficos': '/api/charts' // TRADUCCIÓN DEL PREFIJO
+  }, 
+  onError: (err, req, res) => {
+     console.error('[ERROR -> GRAFICOS]', err.message);
+     res.status(500).json({ error: 'Fallo conexión Gráficos' });
+  }
+}));
 
 
-// --- ADMINISTRACIÓN (LUGARES, REWARDS) ---
+// --- ADMINISTRACIÓN (RECORTE SIMPLE) ---
 // Entra: /api/admin/lugares -> Sale: /lugares
-// OJO: Esta ruta debe ir DESPUÉS de /api/admin/users (Cuentas) para no chocar
 app.use('/api/admin', createProxyMiddleware({
   target: process.env.ADMINISTRACION_URL || 'http://administracion_container:8085',
   changeOrigin: true,
   pathRewrite: { '^/api/admin': '' },
   onProxyReq: (proxyReq, req, res) => {
+    // Código para reenvío de body de POST/PUT
     if (req.body) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
       proxyReq.write(bodyData);
     }
-    console.log(`🚀 [PROXY -> ADMIN] Enviando: ${req.url}`);
   }
 }));
 
-// --- CONTENIDO ---
+// --- CONTENIDO (RECORTE SIMPLE) ---
 app.use('/api/contenido', createProxyMiddleware({
   target: process.env.CONTENIDO_URL || 'http://contenido_container:8091',
   changeOrigin: true,
   pathRewrite: { '^/api/contenido': '' },
-  onProxyReq: (proxyReq, req, res) => {
-    console.log(`🚀 [PROXY -> CONTENIDO] Enviando: ${req.url}`);
-  }
 }));
 
-// --- INTERACCIÓN ---
+// --- EL RESTO DE SERVICIOS (Todos necesitan recorte simple) ---
 app.use('/api/interaccion', createProxyMiddleware({
   target: process.env.INTERACCION_URL || 'http://interaccion_container:8083',
-  changeOrigin: true,
   pathRewrite: { '^/api/interaccion': '' }
 }));
-
-// --- GAMIFICACIÓN (RECOMPENSAS) ---
 app.use('/api/gamificacion', createProxyMiddleware({
   target: process.env.GAMIFICACION_URL || 'http://recompensas_container:8084',
-  changeOrigin: true,
   pathRewrite: { '^/api/gamificacion': '' }
 }));
-
-// --- TRADUCCIÓN ---
 app.use('/api/traduccion', createProxyMiddleware({
   target: process.env.TRADUCCION_URL || 'http://traduccion_container:8086',
-  changeOrigin: true,
   pathRewrite: { '^/api/traduccion': '' }
 }));
-
-// --- NOTICIAS (Ahora pasa la ruta completa) ---
 app.use('/api/noticias', createProxyMiddleware({
   target: process.env.NOTICIAS_URL || 'http://noticias_container:8093',
-  changeOrigin: true,
-  // ¡QUITAMOS EL PATH REWRITE! Esto envía /api/noticias/locales tal cual.
-  // pathRewrite: { '^/api/noticias': '' } <-- ESTA LÍNEA DEBE DESAPARECER O ESTAR COMENTADA
-  onProxyReq: (proxyReq, req, res) => {
-    console.log(`🚀 [PROXY -> NOTICIAS] Enviando: ${req.url} (RUTA COMPLETA)`);
-  },
-  onError: (err, req, res) => {
-    console.error('[ERROR -> NOTICIAS]', err.message);
-    res.status(500).json({ error: 'Fallo conexión Noticias' });
-  }
+  pathRewrite: { '^/api/noticias': '' } // NOTICIAS TAMBIÉN NECESITA EL RECORTE
 }));
-
-// --- PUNTOS ---
 app.use('/api/puntos', createProxyMiddleware({
   target: process.env.PUNTOS_URL || 'http://puntos_container:8097',
-  changeOrigin: true,
   pathRewrite: { '^/api/puntos': '' }
 }));
 
-// =======================================================================
-// SERVICIO GRÁFICOS (DASHBOARD) - TRADUCCIÓN DE RUTA
-// =======================================================================
-app.use('/api/graficos', createProxyMiddleware({
-  target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
-  changeOrigin: true,
-
-  // CORRECCIÓN MAESTRA:
-  // Como Express ya quitó '/api/graficos', la ruta que llega aquí es solo '/stats/...'
-  // Le decimos: "Al inicio (^/), ponle '/api/charts/'"
-  pathRewrite: {
-    '^/': '/api/charts/'
-  },
-
-  onProxyReq: (proxyReq, req, res) => {
-    // Nota: req.url aquí ya tiene el rewrite aplicado internamente por el proxy antes de enviarse
-    console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url}`);
-  },
-  onError: (err, req, res) => {
-    console.error('[ERROR -> GRAFICOS]', err.message);
-    res.status(500).json({ error: 'Fallo conexión Gráficos' });
-  }
-}));
-
 
 // =======================================================================
-// MANEJADOR FINAL
+// MANEJADOR 404 FINAL
 // =======================================================================
-// Health Check de la Raíz del Gateway
-app.get('/', (req, res) => {
-    res.json({ status: "OK", message: "Gateway Root is Active." });
-});
-
-// Health Check del API
-app.get('/api/health', (req, res) => {
-    res.json({ status: "OK", server: "Gateway Operational" });
-});
-
-// Manejador 404
 app.use((req, res) => {
   console.log(`⚠️ [404] Ruta desconocida: ${req.originalUrl}`);
   res.status(404).json({ error: 'Ruta no encontrada en el Gateway', path: req.originalUrl });
