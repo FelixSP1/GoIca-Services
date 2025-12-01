@@ -29,7 +29,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // IMPORTANTE: Responder a las peticiones PREFLIGHT (OPTIONS) antes de nada
-app.options('*', cors(corsOptions));
+app.options('(.*)', cors(corsOptions));
 
 // 2. LOGGING DETALLADO (Para ver qué llega exactamente)
 app.use((req, res, next) => {
