@@ -86,33 +86,46 @@ app.use('/api/traduccion', createProxyMiddleware({
 
 
 // =======================================================================
-// GRUPO 3: CASOS ESPECIALES (Admin general, Gráficos, Noticias)
+// SERVICIO ADMINISTRACIÓN (Con Rewrite)
 // =======================================================================
+// Hardcodeamos la dirección para asegurar conexión
+const TARGET_ADMIN = 'http://administracion_container:8085';
 
-// --- Administración (General) ---
-// Si tu servicio de administración espera recibir /api/admin... no pongas rewrite.
-// Si espera recibir /... pon rewrite. (Asumiré rewrite para ser consistente con microservicios)
+console.log("--> Configurando Admin hacia:", TARGET_ADMIN);
+
 app.use('/api/admin', createProxyMiddleware({
-  target: process.env.ADMINISTRACION_URL,
+  target: TARGET_ADMIN,
   changeOrigin: true,
-  // pathRewrite: { '^/api/admin': '' }, // <--- DESCOMENTA ESTO SI FALLA ADMIN
+  // ESTO ES LO QUE FALTABA: Borrar '/api/admin' para que llegue solo '/lugares'
+  pathRewrite: { 
+    '^/api/admin': '' 
+  },
   onProxyReq: (proxyReq, req, res) => {
-    // Fix para que el body (JSON) pase correctamente en peticiones POST/PUT
-    if (req.body) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
+     // Si es POST/PUT, arreglamos el body (por si acaso)
+     if (req.body) {
+       const bodyData = JSON.stringify(req.body);
+       proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+       proxyReq.write(bodyData);
+     }
+     console.log(`🚀 [PROXY -> ADMIN] Enviando: ${req.url}`);
+  },
+  onError: (err, req, res) => {
+     console.error('[ERROR -> ADMIN]', err.message);
+     res.status(500).json({ error: 'Fallo conexión Admin', msg: err.message });
   }
 }));
 
-// --- Gráficos ---
-// Conservo tu lógica original de agregar /api/charts
+
+// =======================================================================
+// SERVICIO GRÁFICOS
+// =======================================================================
 app.use('/api/graficos', createProxyMiddleware({
-  target: process.env.GRAFICOS_URL,
+  target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/graficos': '/api/charts', // Transforma /api/graficos -> /api/charts
+  // Asumo que gráficos también espera la ruta limpia (ej. /dashboard)
+  pathRewrite: { '^/api/graficos': '' }, 
+  onProxyReq: (proxyReq, req, res) => {
+     console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url}`);
   }
 }));
 
