@@ -11,7 +11,7 @@ console.log("--- INICIANDO GATEWAY MAESTRO ---");
 // -----------------------------
 
 app.use(cors({
-  origin: '*', 
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -28,19 +28,19 @@ app.use((req, res, next) => {
 const TARGET_CUENTAS = 'http://cuentas_container:8082';
 
 app.use(
-  ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'], 
+  ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'],
   createProxyMiddleware({
     target: TARGET_CUENTAS,
     changeOrigin: true,
     pathRewrite: (path, req) => {
-       return req.baseUrl + path; // Mantiene /api/auth/...
+      return req.baseUrl + path; // Mantiene /api/auth/...
     },
     onProxyReq: (proxyReq, req, res) => {
-       console.log(`🚀 [PROXY -> CUENTAS] Enviando: ${req.baseUrl}${req.url}`);
+      console.log(`🚀 [PROXY -> CUENTAS] Enviando: ${req.baseUrl}${req.url}`);
     },
     onError: (err, req, res) => {
-       console.error('[ERROR -> CUENTAS]', err.message);
-       res.status(500).json({ error: 'Fallo conexión Cuentas' });
+      console.error('[ERROR -> CUENTAS]', err.message);
+      res.status(500).json({ error: 'Fallo conexión Cuentas' });
     }
   })
 );
@@ -49,26 +49,6 @@ app.use(
 // 2. SERVICIOS QUE NECESITAN "RECORTAR" LA URL (pathRewrite)
 // =======================================================================
 
-// =======================================================================
-// SERVICIO GRÁFICOS (DASHBOARD) - TRADUCCIÓN DE RUTA
-// =======================================================================
-app.use('/api/graficos', createProxyMiddleware({
-  target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
-  changeOrigin: true,
-  
-  // AQUÍ ESTÁ LA CLAVE: Cambiamos 'graficos' por 'charts'
-  pathRewrite: { 
-    '^/api/graficos': '/api/charts' 
-  }, 
-  
-  onProxyReq: (proxyReq, req, res) => {
-     console.log(`🚀 [PROXY -> GRAFICOS] Original: ${req.url} | Enviando a: /api/charts...`);
-  },
-  onError: (err, req, res) => {
-     console.error('[ERROR -> GRAFICOS]', err.message);
-     res.status(500).json({ error: 'Fallo conexión Gráficos' });
-  }
-}));
 
 // --- ADMINISTRACIÓN (LUGARES, REWARDS) ---
 // Entra: /api/admin/lugares -> Sale: /lugares
@@ -93,7 +73,7 @@ app.use('/api/contenido', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: { '^/api/contenido': '' },
   onProxyReq: (proxyReq, req, res) => {
-     console.log(`🚀 [PROXY -> CONTENIDO] Enviando: ${req.url}`);
+    console.log(`🚀 [PROXY -> CONTENIDO] Enviando: ${req.url}`);
   }
 }));
 
@@ -130,6 +110,30 @@ app.use('/api/puntos', createProxyMiddleware({
   target: process.env.PUNTOS_URL || 'http://puntos_container:8097',
   changeOrigin: true,
   pathRewrite: { '^/api/puntos': '' }
+}));
+
+// =======================================================================
+// SERVICIO GRÁFICOS (DASHBOARD) - TRADUCCIÓN DE RUTA
+// =======================================================================
+app.use('/api/graficos', createProxyMiddleware({
+  target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
+  changeOrigin: true,
+
+  // CORRECCIÓN MAESTRA:
+  // Como Express ya quitó '/api/graficos', la ruta que llega aquí es solo '/stats/...'
+  // Le decimos: "Al inicio (^/), ponle '/api/charts/'"
+  pathRewrite: {
+    '^/': '/api/charts/'
+  },
+
+  onProxyReq: (proxyReq, req, res) => {
+    // Nota: req.url aquí ya tiene el rewrite aplicado internamente por el proxy antes de enviarse
+    console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url}`);
+  },
+  onError: (err, req, res) => {
+    console.error('[ERROR -> GRAFICOS]', err.message);
+    res.status(500).json({ error: 'Fallo conexión Gráficos' });
+  }
 }));
 
 
