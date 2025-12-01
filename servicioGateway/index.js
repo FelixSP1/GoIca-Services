@@ -16,6 +16,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// --- SOLUCIÓN PARA EL ERROR OPTIONS/PREFLIGHT ---
+app.options('*', cors()); // <--- AÑADE ESTA LÍNEA
+
 // Log de entrada Global
 app.use((req, res, next) => {
   console.log(`[GATEWAY GLOBAL] Recibido: ${req.method} ${req.originalUrl}`);
