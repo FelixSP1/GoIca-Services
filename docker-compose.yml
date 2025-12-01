@@ -2,21 +2,20 @@ version: '3.8'
 
 services:
   gateway:
+    container_name: gateway_container
     build: ./servicioGateway
     ports:
       - "8089:8089"
     environment:
       - PORT=8089
       # El Gateway necesita saber dónde están los demás (Nombres de servicio Docker)
-      - CUENTAS_URL=http://cuentas:8082
-      - INTERACCION_URL=http://interaccion:8083
-      - GAMIFICACION_URL=http://recompensas:8084
-      - ADMINISTRACION_URL=http://administracion:8085
-      - CONTENIDO_URL=http://contenido:8091
-      - GRAFICOS_URL=http://graficos:8092
-      - NOTICIAS_URL=http://noticias:8093
-      - TRADUCCION_URL=http://traduccion:8086
-      - PUNTOS_URL=http://puntos:8097
+      - CUENTAS_URL=http://cuentas_container:8082
+      - INTERACCION_URL=http://interaccion_container:8083
+      - GAMIFICACION_URL=http://recompensas_container:8084
+      - ADMINISTRACION_URL=http://administracion_container:8085
+      - CONTENIDO_URL=http://contenido_container:8091
+      - GRAFICOS_URL=http://graficos_container:8092
+      - NOTICIAS_URL=http://noticias_container:8093
     depends_on:
       - cuentas
       - interaccion
@@ -28,6 +27,7 @@ services:
     restart: always
 
   cuentas:
+    container_name: cuentas_container
     build: ./servicioCuentas
     ports:
       - "8082:8082"
@@ -47,6 +47,7 @@ services:
     restart: always
 
   interaccion:
+    container_name: interaccion_container
     build: ./servicioInteraccion
     ports:
       - "8083:8083"
@@ -61,6 +62,7 @@ services:
     restart: always
 
   recompensas:
+    container_name: recompensas_container
     build: ./servicioRecompensas
     ports:
       - "8084:8084"
@@ -75,6 +77,7 @@ services:
     restart: always
     
   noticias:
+    container_name: noticias_container
     build: ./servicioNoticias
     ports:
       - "8093:8093"
@@ -89,6 +92,7 @@ services:
     restart: always
 
   graficos:
+    container_name: graficos_container
     build: ./servicioGraficos
     ports:
       - "8092:8092"
@@ -102,6 +106,7 @@ services:
     restart: always
 
   contenido:
+    container_name: contenido_container
     build: ./servicioContenido
     ports:
       - "8091:8091"
@@ -115,6 +120,7 @@ services:
     restart: always
 
   administracion:
+    container_name: administracion_container
     build: ./servicioAdministracion
     ports:
       - "8085:8085"
