@@ -6,9 +6,11 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 const app = express();
 const PORT = process.env.PORT || 8089;
 
-console.log("--- 🚀 INICIANDO GATEWAY V2.2 (FINAL FIX) ---");
+console.log("--- 🚀 INICIANDO GATEWAY V2.3 (FINAL MASTER) ---");
 
-// 1. SEGURIDAD C.O.R.S.
+// =======================================================================
+// 1. SEGURIDAD C.O.R.S. (CONFIGURACIÓN HÍBRIDA)
+// =======================================================================
 const corsOptions = {
   origin: true,
   credentials: true,
@@ -17,9 +19,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions)); // Regex fix para Express 5
+app.options(/.*/, cors(corsOptions)); // Fix Express 5
 
-// 2. LOGGING
+// 2. LOGGING DETALLADO
 app.use((req, res, next) => {
     console.log(`\n📥 [ENTRADA] ${req.method} ${req.originalUrl}`);
     next();
@@ -27,11 +29,11 @@ app.use((req, res, next) => {
 
 // 3. HEALTH CHECK
 app.get('/api/health', (req, res) => {
-    res.json({ status: "OK", message: "Gateway Ready" });
+    res.json({ status: "OK", message: "Gateway Activo" });
 });
 
 // =======================================================================
-// 4. CONFIGURACIÓN DE PROXIES
+// 4. CONFIGURACIÓN DE PROXIES (CON CORRECCIONES)
 // =======================================================================
 
 const createServiceProxy = (target, pathRewriteRule = null) => {
@@ -39,8 +41,17 @@ const createServiceProxy = (target, pathRewriteRule = null) => {
         target: target,
         changeOrigin: true,
         pathRewrite: pathRewriteRule,
+        
+        // --- RECUPERAMOS LA INYECCIÓN DE HEADERS (CRUCIAL PARA FRONTEND) ---
+        onProxyRes: (proxyRes, req, res) => {
+            const origin = req.headers.origin || '*';
+            proxyRes.headers['Access-Control-Allow-Origin'] = origin;
+            proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+        },
+        // ------------------------------------------------------------------
+
         onProxyReq: (proxyReq, req, res) => {
-            // Body fix para POST/PUT
+            // Body fix
             if (req.body && Object.keys(req.body).length > 0) {
                 const bodyData = JSON.stringify(req.body);
                 proxyReq.setHeader('Content-Type', 'application/json');
@@ -56,7 +67,7 @@ const createServiceProxy = (target, pathRewriteRule = null) => {
     });
 };
 
-// --- A. SERVICIO CUENTAS (Sin Rewrite) ---
+// --- A. SERVICIO CUENTAS (Sin Rewrite - Mantiene prefijos) ---
 app.use(
     ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'],
     createServiceProxy(
@@ -65,24 +76,21 @@ app.use(
     )
 );
 
-// --- B. SERVICIO GRÁFICOS (FIX DE RUTA) ---
-// Express quita '/api/graficos'. Queda '/stats/...'.
-// La regla '^/' le pega '/api/charts/' al inicio.
-// Resultado final: '/api/charts/stats/...' (Lo que el microservicio quiere)
+// --- B. SERVICIO GRÁFICOS (Rewrite Especial) ---
+// Traduce /api/graficos -> /api/charts
 app.use('/api/graficos', createServiceProxy(
     process.env.GRAFICOS_URL || 'http://graficos_container:8092',
-    { '^/': '/api/charts/' } // <--- ESTA ES LA CORRECCIÓN
+    { '^/': '/api/charts/' }
 ));
 
 // --- C. SERVICIO ADMINISTRACIÓN (Quita prefijo) ---
+// Traduce /api/admin -> /
 app.use('/api/admin', createServiceProxy(
     process.env.ADMINISTRACION_URL || 'http://administracion_container:8085',
-    { '^/': '/' } // Asegura que empiece limpio
+    { '^/api/admin': '' } 
 ));
 
 // --- D. OTROS SERVICIOS (Quitan prefijo automáticamente) ---
-// Nota: Al usar app.use('/api/algo'), Express ya quita el prefijo.
-// Solo necesitamos asegurarnos de que no agregue nada raro.
 const serviciosSimples = [
     { route: '/api/contenido', target: process.env.CONTENIDO_URL || 'http://contenido_container:8091' },
     { route: '/api/interaccion', target: process.env.INTERACCION_URL || 'http://interaccion_container:8083' },
@@ -93,7 +101,12 @@ const serviciosSimples = [
 ];
 
 serviciosSimples.forEach(svc => {
-    app.use(svc.route, createServiceProxy(svc.target));
+    // --- CORRECCIÓN AQUÍ: CALCULAMOS LA REGLA DE REWRITE ---
+    // Antes enviábamos 'null', por eso fallaban. Ahora enviamos la regla para borrar el prefijo.
+    const rule = {};
+    rule[`^${svc.route}`] = ''; // Ej: {'^/api/contenido': ''}
+    
+    app.use(svc.route, createServiceProxy(svc.target, rule));
 });
 
 // 404 FINAL
