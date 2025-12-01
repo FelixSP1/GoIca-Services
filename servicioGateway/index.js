@@ -30,10 +30,11 @@ const TARGET_CUENTAS = 'http://cuentas_container:8082';
 app.use(
   ['/api/auth', '/api/socio', '/api/user', '/api/admin/users', '/api/admin/socios'],
   createProxyMiddleware({
-    target: TARGET_CUENTAS,
+    target: process.env.CUENTAS_URL || 'http://cuentas_container:8082',
     changeOrigin: true,
     pathRewrite: (path, req) => {
-      return req.baseUrl + path; // Mantiene /api/auth/...
+      // Si el path es /socios/stats, req.baseUrl es /api/admin/socios.
+      return req.baseUrl + path;
     },
     onProxyReq: (proxyReq, req, res) => {
       console.log(`🚀 [PROXY -> CUENTAS] Enviando: ${req.baseUrl}${req.url}`);
@@ -98,11 +99,19 @@ app.use('/api/traduccion', createProxyMiddleware({
   pathRewrite: { '^/api/traduccion': '' }
 }));
 
-// --- NOTICIAS ---
+// --- NOTICIAS (Ahora pasa la ruta completa) ---
 app.use('/api/noticias', createProxyMiddleware({
   target: process.env.NOTICIAS_URL || 'http://noticias_container:8093',
   changeOrigin: true,
-  pathRewrite: { '^/api/noticias': '' }
+  // ¡QUITAMOS EL PATH REWRITE! Esto envía /api/noticias/locales tal cual.
+  // pathRewrite: { '^/api/noticias': '' } <-- ESTA LÍNEA DEBE DESAPARECER O ESTAR COMENTADA
+  onProxyReq: (proxyReq, req, res) => {
+    console.log(`🚀 [PROXY -> NOTICIAS] Enviando: ${req.url} (RUTA COMPLETA)`);
+  },
+  onError: (err, req, res) => {
+    console.error('[ERROR -> NOTICIAS]', err.message);
+    res.status(500).json({ error: 'Fallo conexión Noticias' });
+  }
 }));
 
 // --- PUNTOS ---
