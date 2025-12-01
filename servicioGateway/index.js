@@ -49,14 +49,23 @@ app.use(
 // 2. SERVICIOS QUE NECESITAN "RECORTAR" LA URL (pathRewrite)
 // =======================================================================
 
-// --- GRÁFICOS (DASHBOARD) ---
-// Entra: /api/graficos/stats/... -> Sale: /stats/...
+// =======================================================================
+// SERVICIO GRÁFICOS (DASHBOARD)
+// =======================================================================
+// Entra: /api/graficos/stats/... 
+// Sale:  http://graficos:8092/api/charts/stats/... (Traducción correcta)
 app.use('/api/graficos', createProxyMiddleware({
   target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
   changeOrigin: true,
-  pathRewrite: { '^/api/graficos': '' }, 
+  pathRewrite: { 
+    '^/api/graficos': '/api/charts' // <--- AQUÍ ESTÁ LA MAGIA: Cambiamos graficos por charts
+  }, 
   onProxyReq: (proxyReq, req, res) => {
-     console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url}`);
+     console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url} (Reescrito a /api/charts)`);
+  },
+  onError: (err, req, res) => {
+     console.error('[ERROR -> GRAFICOS]', err.message);
+     res.status(500).json({ error: 'Fallo conexión Gráficos' });
   }
 }));
 
