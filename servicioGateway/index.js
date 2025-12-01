@@ -26,33 +26,29 @@ app.use((req, res, next) => {
 });
 
 // =======================================================================
-// SERVICIO CUENTAS (Definición Explícita)
+// SERVICIO CUENTAS (Hardcodeado para probar)
 // =======================================================================
-const cuentasTarget = process.env.CUENTAS_URL;
+// OJO: Escribimos la dirección directa aquí para descartar errores de variables
+const CUENTAS_DIRECTO = 'http://cuentas_container:8082';
 
-if (!cuentasTarget) {
-  console.error("❌ ERROR CRÍTICO: No existe la variable CUENTAS_URL");
-}
+console.log("--> Configurando Proxy Cuentas hacia:", CUENTAS_DIRECTO);
 
-// Proxy específico para Auth (Login/Register)
-app.use('/api/auth', createProxyMiddleware({
-  target: cuentasTarget, // http://cuentas_container:8082
-  changeOrigin: true,
-  // No usamos pathRewrite porque Cuentas espera /api/auth
-  onProxyReq: (proxyReq, req, res) => {
-     console.log(`[PROXY -> CUENTAS] Enviando Login a: ${cuentasTarget}${req.originalUrl}`);
-  },
-  onError: (err, req, res) => {
-     console.error('[ERROR -> CUENTAS]', err.message);
-     res.status(500).json({ error: 'Fallo al conectar con Cuentas', details: err.message });
-  }
-}));
-
-// Proxy para el resto de Cuentas
-app.use(['/api/socio', '/api/user', '/api/admin/users'], createProxyMiddleware({
-  target: cuentasTarget,
-  changeOrigin: true
-}));
+// Unificamos todo en una sola regla para evitar confusiones
+app.use(
+  ['/api/auth', '/api/socio', '/api/user', '/api/admin'], // Rutas que captura
+  createProxyMiddleware({
+    target: CUENTAS_DIRECTO,
+    changeOrigin: true,
+    // NO usamos pathRewrite porque Cuentas espera la ruta completa
+    onProxyReq: (proxyReq, req, res) => {
+       console.log(`[PROXY -> CUENTAS] Enviando: ${req.method} ${req.originalUrl}`);
+    },
+    onError: (err, req, res) => {
+       console.error('[ERROR -> CUENTAS]', err.message);
+       res.status(500).json({ error: 'Fallo conexión Cuentas', details: err.message });
+    }
+  })
+);
 
 // =======================================================================
 // SERVICIO CONTENIDO (Con Rewrite)

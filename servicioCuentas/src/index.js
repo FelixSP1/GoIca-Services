@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 8082;
 
 app.use(cors());
-app.use(express.json())
+app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/socio', socioRouter);
