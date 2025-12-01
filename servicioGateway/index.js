@@ -21,28 +21,28 @@ console.log("CONTENIDO_URL detectada:", process.env.CONTENIDO_URL || "¡VACÍA/U
 // -----------------------------
 
 // =======================================================================
-// CONFIGURACIÓN MAESTRA DE CUENTAS (Simplificada)
+// SERVICIO CUENTAS (Arreglo de Ruta Recortada)
 // =======================================================================
-// 1. Definimos el destino FIJO (Hardcodeado) para descartar errores de variables
 const TARGET_CUENTAS = 'http://cuentas_container:8082';
 
 console.log("--> Configurando Rutas de Cuentas hacia:", TARGET_CUENTAS);
 
-// 2. Middleware de depuración específico para rutas de Cuentas
-app.use('/api/auth', (req, res, next) => {
-  console.log("✅ [DEBUG] Express detectó una petición para /api/auth. Iniciando Proxy...");
-  next(); 
-});
-
-// 3. El Proxy Real
+// Usamos una expresión regular para capturar el grupo '/api/auth' y otros
 app.use(
   ['/api/auth', '/api/socio', '/api/user', '/api/admin'], 
   createProxyMiddleware({
     target: TARGET_CUENTAS,
     changeOrigin: true,
-    // onProxyReq es el momento justo antes de enviar la petición
+    // TRUCO MAESTRO:
+    // Express recorta la URL (ej. envía '/login').
+    // Aquí le decimos: "Al principio de la URL (^), agrega de nuevo la ruta original que recortaste".
+    pathRewrite: (path, req) => {
+       // Usamos req.baseUrl que contiene la parte recortada ('/api/auth')
+       // y la unimos con el path ('/login')
+       return req.baseUrl + path; 
+    },
     onProxyReq: (proxyReq, req, res) => {
-       console.log(`🚀 [PROXY SALIENTE] Enviando a Cuentas: ${req.method} ${req.url}`);
+       console.log(`🚀 [PROXY SALIENTE] Enviando a Cuentas (Full URL): ${req.baseUrl}${req.url}`);
     },
     onError: (err, req, res) => {
        console.error('wq [PROXY ERROR]', err);
