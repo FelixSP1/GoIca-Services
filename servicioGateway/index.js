@@ -29,7 +29,7 @@ console.log("--> Configurando Rutas de Cuentas hacia:", TARGET_CUENTAS);
 
 // Usamos una expresión regular para capturar el grupo '/api/auth' y otros
 app.use(
-  ['/api/auth', '/api/socio', '/api/user', '/api/admin'], 
+  ['/api/auth', '/api/socio', '/api/user', '/api/admin'],
   createProxyMiddleware({
     target: TARGET_CUENTAS,
     changeOrigin: true,
@@ -37,16 +37,16 @@ app.use(
     // Express recorta la URL (ej. envía '/login').
     // Aquí le decimos: "Al principio de la URL (^), agrega de nuevo la ruta original que recortaste".
     pathRewrite: (path, req) => {
-       // Usamos req.baseUrl que contiene la parte recortada ('/api/auth')
-       // y la unimos con el path ('/login')
-       return req.baseUrl + path; 
+      // Usamos req.baseUrl que contiene la parte recortada ('/api/auth')
+      // y la unimos con el path ('/login')
+      return req.baseUrl + path;
     },
     onProxyReq: (proxyReq, req, res) => {
-       console.log(`🚀 [PROXY SALIENTE] Enviando a Cuentas (Full URL): ${req.baseUrl}${req.url}`);
+      console.log(`🚀 [PROXY SALIENTE] Enviando a Cuentas (Full URL): ${req.baseUrl}${req.url}`);
     },
     onError: (err, req, res) => {
-       console.error('wq [PROXY ERROR]', err);
-       res.status(500).json({ error: 'Fallo al conectar con el microservicio', msg: err.message });
+      console.error('wq [PROXY ERROR]', err);
+      res.status(500).json({ error: 'Fallo al conectar con el microservicio', msg: err.message });
     }
   })
 );
@@ -59,7 +59,7 @@ app.use('/api/contenido', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: { '^/api/contenido': '' },
   onProxyReq: (proxyReq, req, res) => {
-     console.log(`🚀 [PROXY SALIENTE] Enviando a Contenido: ${req.url}`);
+    console.log(`🚀 [PROXY SALIENTE] Enviando a Contenido: ${req.url}`);
   }
 }));
 
@@ -86,46 +86,48 @@ app.use('/api/traduccion', createProxyMiddleware({
 
 
 // =======================================================================
-// SERVICIO ADMINISTRACIÓN (Con Rewrite)
+// SERVICIO GRÁFICOS (Dashboard)
 // =======================================================================
-// Hardcodeamos la dirección para asegurar conexión
-const TARGET_ADMIN = 'http://administracion_container:8085';
-
-console.log("--> Configurando Admin hacia:", TARGET_ADMIN);
-
-app.use('/api/admin', createProxyMiddleware({
-  target: TARGET_ADMIN,
-  changeOrigin: true,
-  // ESTO ES LO QUE FALTABA: Borrar '/api/admin' para que llegue solo '/lugares'
-  pathRewrite: { 
-    '^/api/admin': '' 
-  },
-  onProxyReq: (proxyReq, req, res) => {
-     // Si es POST/PUT, arreglamos el body (por si acaso)
-     if (req.body) {
-       const bodyData = JSON.stringify(req.body);
-       proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-       proxyReq.write(bodyData);
-     }
-     console.log(`🚀 [PROXY -> ADMIN] Enviando: ${req.url}`);
-  },
-  onError: (err, req, res) => {
-     console.error('[ERROR -> ADMIN]', err.message);
-     res.status(500).json({ error: 'Fallo conexión Admin', msg: err.message });
-  }
-}));
-
-
-// =======================================================================
-// SERVICIO GRÁFICOS
-// =======================================================================
+// Entra: /api/graficos/stats/general
+// Sale:  http://graficos:8092/stats/general (Borramos el prefijo)
 app.use('/api/graficos', createProxyMiddleware({
   target: process.env.GRAFICOS_URL || 'http://graficos_container:8092',
   changeOrigin: true,
-  // Asumo que gráficos también espera la ruta limpia (ej. /dashboard)
-  pathRewrite: { '^/api/graficos': '' }, 
+  pathRewrite: {
+    '^/api/graficos': '' // <--- BORRAMOS EL PREFIJO, NO LO CAMBIAMOS
+  },
   onProxyReq: (proxyReq, req, res) => {
-     console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url}`);
+    console.log(`🚀 [PROXY -> GRAFICOS] Enviando: ${req.url}`);
+  },
+  onError: (err, req, res) => {
+    console.error('[ERROR -> GRAFICOS]', err.message);
+    res.status(500).json({ error: 'Fallo conexión Gráficos' });
+  }
+}));
+
+// =======================================================================
+// SERVICIO ADMINISTRACIÓN (Lugares, Recompensas, Reseñas)
+// =======================================================================
+// Entra: /api/admin/lugares
+// Sale:  http://administracion:8085/lugares
+app.use('/api/admin', createProxyMiddleware({
+  target: process.env.ADMINISTRACION_URL || 'http://administracion_container:8085',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/admin': '' // <--- IMPORTANTE: Tu router de admin espera /lugares, no /api/admin/lugares
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    // Fix para que funcionen los POST/PUT (Crear lugares, editar recompensas)
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
+    console.log(`🚀 [PROXY -> ADMIN] Enviando: ${req.url}`);
+  },
+  onError: (err, req, res) => {
+    console.error('[ERROR -> ADMIN]', err.message);
+    res.status(500).json({ error: 'Fallo conexión Admin' });
   }
 }));
 
