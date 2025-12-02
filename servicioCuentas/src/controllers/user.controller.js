@@ -157,3 +157,43 @@ export const uploadUserProfileImage = async (req, res) => {
     res.status(500).json({ message: "Error al subir la imagen", error: error.message });
   }
 };
+
+// Función exclusiva para cambiar contraseña
+export const changePassword = async (req, res) => {
+  try {
+    // El ID viene del token (gracias al middleware authRequired)
+    const idUsuario = req.user.id; 
+    const { currentPassword, newPassword } = req.body;
+
+    // 1. Validar que envíen los datos
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Debes enviar la contraseña actual y la nueva." });
+    }
+
+    // 2. Buscar la contraseña actual en la BD
+    const [users] = await pool.query('SELECT Password FROM usuarios WHERE idUsuario = ?', [idUsuario]);
+    
+    if (users.length === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    // 3. Verificar que la contraseña actual coincida (Seguridad)
+    const isMatch = await bcrypt.compare(currentPassword, users[0].Password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "La contraseña actual es incorrecta." });
+    }
+
+    // 4. Encriptar la NUEVA contraseña
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // 5. Actualizar en la base de datos
+    await pool.query('UPDATE usuarios SET Password = ? WHERE idUsuario = ?', [hashedNewPassword, idUsuario]);
+
+    res.json({ message: "Contraseña actualizada correctamente." });
+
+  } catch (error) {
+    console.error("Error cambiando contraseña:", error);
+    res.status(500).json({ message: "Error en el servidor al cambiar la contraseña.", error: error.message });
+  }
+};
