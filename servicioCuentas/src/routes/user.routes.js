@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { getUserProfile, updateProfile, uploadUserProfileImage } from '../controllers/user.controller.js';
+import { getUserProfile, updateProfile, uploadUserProfileImage, changePassword } from '../controllers/user.controller.js';
 import { authRequired } from '../middleware/validateToken.js';
 
 
